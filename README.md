@@ -15,11 +15,13 @@ has no access to the answer.
 
 - [Why this exists](#why-this-exists)
 - [Screens](#screens)
+- [System architecture](#system-architecture)
 - [How the pipeline works](#how-the-pipeline-works)
 - [Difficulty is measured, not guessed](#difficulty-is-measured-not-guessed)
 - [Grading](#grading)
 - [Anti-cheat](#anti-cheat)
 - [The one model call, and what it is not allowed to say](#the-one-model-call-and-what-it-is-not-allowed-to-say)
+- [Accounts and sign-in](#accounts-and-sign-in)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Running it](#running-it)
@@ -117,6 +119,131 @@ reading the right file.
 Solved against total, per band, a year of activity, streaks, and recent solves.
 Signed out this still works from the browser's own record; signing in merges the
 two rather than replacing one with the other.
+
+---
+
+## System architecture
+
+BugForge is two systems that meet at a database. The **forge** is a batch
+pipeline that turns a repository into challenges and runs on its own schedule.
+The **app** is a read-mostly API over what the forge produced, plus one write
+path: a submission, graded by running tests.
+
+```
+                a vetted repo, at a pinned commit
+                                |
+                                v
+  +----------------------------------------------------------+
+  |                                                          |
+  |                        THE FORGE                         |
+  |                                                          |
+  |  Step Functions, 8 stages, fanning out with a            |
+  |  Distributed Map. One container image per repo, with the |
+  |  repo and its test dependencies baked in at build time.  |
+  |                                                          |
+  +----------------------------------------------------------+
+                |                              |
+                | challenges, gaps             |  trees, sealed answers
+                v                              v
+  +---------------------------+  +---------------------------+
+  |  DynamoDB, 5 tables       |  |  S3, 2 prefixes, under    |
+  |                           |  |  two different roles      |
+  |  challenges   gaps        |  |                           |
+  |  submissions  progress    |  |  public/   presignable    |
+  |  leaderboard              |  |  answers/  never presigned|
+  +---------------------------+  +---------------------------+
+                ^                              ^
+                |                              |  every AWS call goes
+                |                              |  through two functions:
+                |                              |  s3_io.client() and
+                |                              |  ddb_io.table()
+  +----------------------------------------------------------+
+  |                                                          |
+  |                         THE APP                          |
+  |                                                          |
+  |  fn_api    16 routes, read-mostly                        |
+  |  fn_auth   GitHub OAuth, signed session cookie           |
+  |  fn_grade  runs the full suite, so it runs in the forge  |
+  |            image: the only place the suite exists        |
+  |                                                          |
+  +----------------------------------------------------------+
+                                ^
+                                |
+     a browser, on a Next.js static export that proxies /api/*
+```
+
+### The layers
+
+| layer | lives in | what it knows |
+|---|---|---|
+| pipeline library | `bugforge/` | ASTs, coverage maps, test running, scoring. No AWS imports. |
+| language adapters | `bugforge/languages/` | how one language locates a token, reads coverage, runs tests, extracts a failure |
+| cloud handlers | `cloud/handlers/` | one file per function. Event in, dict out. |
+| cloud helpers | `cloud/` | config, ids, S3 and DynamoDB access, auth, anti-cheat, the one model call |
+| HTTP adapter | `server/app.py` | translates HTTP into the API Gateway event shape, off AWS only |
+| web | `web/` | a static export that fetches everything client-side |
+
+The direction of dependency is one way. `bugforge/` never imports `cloud/`, so
+the pipeline is testable without AWS in scope at all, and the handlers are thin
+enough that most of them are a dozen lines of wiring around a library call.
+
+### The two seams
+
+Every AWS call in the application path goes through exactly two functions:
+
+```python
+cloud/s3_io.py    client()   ->  a boto3 S3 client
+cloud/ddb_io.py   table(name) ->  a boto3 DynamoDB Table resource
+```
+
+That is what makes the no-AWS deploy possible without a second copy of
+anything. `cloud/local_store.py` supplies an object of each shape backed by a
+directory and a SQLite file, so **no call site changes**: the handlers, the
+grader and the API make the same calls they make against real AWS. It is
+constructed only when `BUGFORGE_LOCAL_STORE` is set, so a real deployment
+cannot fall into that path even though the module ships in the image.
+
+Nothing beyond what a call site actually uses is emulated. There is no
+BatchWrite, no filter expression and no pagination, so a future call site
+needing one fails loudly rather than quietly returning the wrong rows.
+
+### Three deployment shapes, one codebase
+
+| shape | compute | storage | what stands in |
+|---|---|---|---|
+| **AWS** | Lambda, API Gateway, Step Functions, Amplify | S3 + DynamoDB | nothing |
+| **LocalStack** | `sam local start-api`, LocalStack Lambda | LocalStack S3 + DynamoDB | forging, which needs a container-image Lambda |
+| **No AWS** | one uvicorn process (`server/app.py`) | a directory + SQLite | S3, DynamoDB, API Gateway, the Lambda boundary |
+
+The third shape is the one that runs on a plain container host with no AWS
+account. `server/app.py` does not reimplement a single route. It holds the
+deployed stack's route list, spelled exactly as API Gateway spells a
+`routeKey`, builds the HTTP API v2 event the handlers already expect, calls the
+same `fn_api.handler` and `fn_auth.handler`, and translates the returned dict
+back into a response. Every rule about what the API will and will not say still
+lives in `cloud/handlers/`, so there is no second copy of the routing to drift.
+
+Two details of that port are load bearing rather than cosmetic:
+
+- **Presigning.** A local store has nothing to sign with, so a presigned URL is
+  a plain link to the process's own `/files` route. That route refuses any key
+  not under `public/`, which is what carries the "answers are never presigned"
+  invariant across the port. It is a refusal, not a filter.
+- **Cookies.** API Gateway v2 answers with a `cookies` list rather than
+  headers, because the callback leg sets two cookies on one response: it clears
+  the OAuth state and plants the session. A dict of headers cannot express
+  that, so the translation is covered by a test that drives a whole sign-in
+  through the ASGI app with only the two GitHub network calls replaced.
+
+### Startup checks
+
+The no-AWS process refuses to start on a misconfiguration whose only runtime
+symptom would be silence: an unrecognised cookie mode, a `Secure` cookie paired
+with an `http://` callback, a `same_origin` cookie mode whose callback is not
+under `WEB_ORIGIN`, GitHub OAuth configured with no session signing key, or the
+fixed dev identity set anywhere it is not plain-http localhost. A container
+that will not start is the loudest this can be made, and it is loud at deploy
+time rather than when the first person tries to sign in.
 
 ---
 
@@ -304,6 +431,57 @@ and if it is unavailable nothing degrades except prose.
 
 ---
 
+## Accounts and sign-in
+
+Sign-in is GitHub OAuth. It buys attribution and cross-device progress, and
+nothing else: browsing, reading a traceback, editing a patch and being graded
+all work signed out.
+
+**Sessions are signed, not stored.** A session is an HS256 JWT carrying the
+GitHub numeric id, login and avatar, and nothing else. There is no session
+table and nothing to revoke; a session expires. A session grants exactly one
+thing, the right to submit a patch as yourself, and nothing a stolen one could
+do is worth a DynamoDB round trip on every request. The verification is
+constant-time and `alg` is never read back out of the token.
+
+**Identity comes only from the verified session.** No handler reads a user id
+from a request body.
+
+**Two secrets, not one.** The GitHub client secret is readable only by
+`fn_auth`, because it can impersonate the whole application to GitHub. The
+session signing key is readable by `fn_auth`, which signs, and `fn_api`, which
+verifies. Collapsing them would hand every route the ability to talk to GitHub
+as the app.
+
+**The `state` token is signed and echoed in a short-lived cookie**, and both
+copies must be present, identical and validly signed on the way back. Without
+it an attacker can complete a sign-in in a victim's browser with their own
+code, silently attaching the victim's submissions to the attacker's account.
+The post-sign-in redirect is bounded to `WEB_ORIGIN`, because an open redirect
+on a callback is how an OAuth flow turns into a phishing primitive.
+
+**The cookie's attributes are named, not guessed**, because getting them wrong
+is silent: the browser simply discards the cookie and signing in appears to do
+nothing.
+
+| `BUGFORGE_COOKIE_MODE` | attributes | when |
+|---|---|---|
+| `cross_site` | `HttpOnly; Secure; SameSite=None` | app and API on different domains (Amplify and execute-api) |
+| `same_origin` | `HttpOnly; Secure; SameSite=Lax` | one HTTPS origin serves both, so the cookie is first-party |
+| `insecure` | `HttpOnly; SameSite=Lax` | plain-http localhost, where there is nothing to secure |
+
+**Progress is merged, never chosen between.** The anonymous localStorage record
+folds into the server record on sign-in, so solving a few signed out and then
+signing in does not look like losing your work.
+
+**`/signin/` is one route that is a sign-in page signed out and a sign-out page
+signed in.** It owns no auth logic: it reads the same cached `GET /auth/me`
+answer the header control reads, so the two cannot disagree. The header links
+here rather than redirecting straight to github.com, so the page can say what
+an account buys before sending anyone off-site to approve one.
+
+---
+
 ## Features
 
 ### The forge
@@ -351,10 +529,10 @@ and if it is unavailable nothing degrades except prose.
 
 ### Accounts
 
-- **GitHub OAuth**, with a hand-rolled HS256 session cookie: HttpOnly,
-  constant-time verification, and `alg` never read back out of the token.
-- Identity is taken **only** from the verified session. No handler reads a user
-  id from a request body.
+- **GitHub OAuth**, with a hand-rolled HS256 session cookie. See
+  [Accounts and sign-in](#accounts-and-sign-in) for the full design.
+- A dedicated `/signin/` account screen, which is a sign-out screen once you
+  are signed in, sharing one cached session answer with the header control.
 - **Solved state is merged, never chosen between**: the anonymous localStorage
   record folds into the server record on sign-in, so solving a few signed out
   and then signing in does not look like losing your work.
@@ -377,7 +555,25 @@ and if it is unavailable nothing degrades except prose.
 - One SAM template describes both the local and the deployed stack.
 - Two S3 prefixes with genuinely different IAM, not a naming convention.
 - Presigned URLs for public trees, with a TTL; answers are never presigned.
+- **A no-AWS deploy** behind the same two storage seams, so one uvicorn process
+  and a directory serve the whole app with no account and nothing billable.
+- **Startup checks that refuse to serve** on a silent misconfiguration, rather
+  than failing on the first person who tries to sign in.
 - Themes, keyboard-first navigation, and a layout that works at phone width.
+
+### Design system
+
+- **Neo-brutalist**, built on four rules: elevation is a hard offset shadow and
+  never a blur, every surface carries a thick ink border, corners are square
+  because the radius scale is wiped, and colour is flat and saturated.
+- Light is the primary theme, cream paper rather than white; dark is the same
+  tokens re-pointed.
+- **Every colour resolves through one set of CSS custom properties**, so the
+  re-skin cost no component edits and CodeMirror follows the theme because its
+  stylesheet is written in the same variables.
+- The theme is one attribute on `<html>`, applied before first paint, so a
+  light viewer never sees a dark flash.
+- Contrast is checked per token, and the ratios are recorded beside the values.
 
 ---
 
@@ -395,8 +591,10 @@ Everything below is from the **Build It** column: open source, local, no account
 | Data | **S3** | public trees and sealed answers, under separate IAM |
 | Auth | **Secrets Manager** | session signing key and GitHub OAuth credentials |
 | Runtime | **Python 3.12** on Lambda container images | the whole pipeline |
+| No-AWS runtime | **FastAPI** + **uvicorn** (`server/app.py`) | one ASGI process standing in for API Gateway and three Lambdas |
+| No-AWS storage | **SQLite** + the filesystem (`cloud/local_store.py`) | objects of the boto3 S3 and DynamoDB shapes, so no call site changes |
 | Web | **Next.js 16**, React 19, Tailwind 4, CodeMirror 6 | the app, editor and traceback walker |
-| Tests | **pytest**, **vitest** | 369 Python tests, 126 web tests |
+| Tests | **pytest**, **vitest** | 403 Python tests, 126 web tests |
 
 The deployed path (Lambda, API Gateway, Step Functions, Amplify Hosting) is the
 same template, so this is not a demo build that has diverged from the real one.
@@ -405,8 +603,62 @@ same template, so this is not a demo build that has diverged from the real one.
 
 ## Running it
 
-Full detail, including every failure mode and why it happens, is in
-[`infra/local/README.md`](infra/local/README.md). The short version:
+There are two ways to run the whole thing on one machine. Neither needs an AWS
+account and neither is billable.
+
+### The short way: no AWS at all
+
+One Python process serves the API, grades submissions in-process, and keeps its
+state in a directory. Nothing is containerised except the repo checkout the
+grader needs.
+
+```bash
+pip install -r requirements.txt fastapi uvicorn
+
+# which repo, where the store lives, and how the cookie is attributed
+export PYTHONPATH=.
+export BUGFORGE_LOCAL_STORE=./local_output/store
+export BUCKET=bugforge-local
+export REPO_NAME=jd__tenacity REPO_PACKAGE=tenacity REPO_LANGUAGE=python
+export REPO_URL=https://github.com/jd/tenacity REPO_DIR=./cache/jd__tenacity
+export TABLE_CHALLENGES=challenges TABLE_GAPS=gaps TABLE_SUBMISSIONS=submissions
+export TABLE_LEADERBOARD=leaderboard TABLE_PROGRESS=progress
+export BUGFORGE_LOCAL_GRADING=1 BUGFORGE_DISABLE_BEDROCK=1
+export BUGFORGE_COOKIE_MODE=insecure BUGFORGE_PUBLIC_BASE=/api
+export WEB_ORIGIN=http://localhost:3100
+export OAUTH_REDIRECT_URI=http://localhost:3100/api/auth/callback
+
+# optional, for real sign-in: a GitHub OAuth app registered against the
+# callback above. Without these, browsing works and submitting is refused
+# with a 401.
+export GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... SESSION_SECRET=...
+
+python -m uvicorn server.app:app --host 127.0.0.1 --port 3102
+
+# the web app, in another terminal, proxying /api/* to the line above
+cd web && BUGFORGE_LOCAL_API=http://127.0.0.1:3102 npm run dev -- --port 3100
+```
+
+Then open `http://localhost:3100`.
+
+Keep those exports in a file under `local_output/`, which is gitignored
+wholesale, so a client secret cannot reach a commit. On Git Bash, set
+`MSYS_NO_PATHCONV=1` first: it rewrites `/api` into a Windows path before the
+process ever sees it, and every tree fetch then fails on an unparseable URL.
+
+The proxy is not a convenience. The session cookie is HttpOnly, and on plain
+http a browser keeps such a cookie only for a localhost origin, so proxying is
+what makes the API first-party to the web app and lets the GitHub callback be a
+stable `http://localhost:3100/api/auth/callback`.
+
+`GET /` on the API answers with which repo is loaded, whether the store is
+local or AWS, whether grading is in-process, and whether sign-in is configured.
+
+### The full way: the real stack on LocalStack
+
+This runs the actual SAM template, the Step Functions workflow and the two S3
+prefixes with their different IAM. Full detail, including every failure mode
+and why it happens, is in [`infra/local/README.md`](infra/local/README.md).
 
 ```bash
 pip install -r requirements.txt -r requirements-local.txt
@@ -456,11 +708,18 @@ definition, the IAM split between the two S3 prefixes, and every screen.
 - **Grading** runs inside the API process locally rather than as a separately
   invoked Lambda, for the same reason. It is the same `fn_grade.handler` in the
   same image, producing the same verdicts.
-- **Sign-in** uses a fixed local user, so the app is usable without registering
-  a GitHub OAuth app. Real GitHub OAuth is implemented and documented.
+- **S3 and DynamoDB**, on the no-AWS path only, are a directory and a SQLite
+  file behind the same two client seams. The handlers make the same calls.
+- **Sign-in** is the real GitHub OAuth flow on both local paths, given an OAuth
+  app. A fixed local user exists as a convenience for running without one, and
+  is refused anywhere that is not plain-http localhost, because over HTTPS it
+  would hand every visitor the same account and therefore one shared solved
+  history and one leaderboard row.
 
-Both local switches are ignored unless `AWS_ENDPOINT_URL` is set, so a real
-deployment cannot honour them even if a flag leaks into its environment.
+Every local switch is ignored unless its own environment variable is set, and
+the ones that would weaken a deployment refuse at startup rather than at
+request time, so a real deployment cannot honour a flag that leaks into its
+environment.
 
 ---
 
@@ -471,25 +730,35 @@ bugforge/           the pipeline library: baseline, mutate, select, package
   languages/        per-language adapters (Python, Go)
 cloud/              Lambda handlers and shared AWS helpers
   handlers/         one file per function, ten in total
+  auth.py           OAuth state, session JWTs, cookie modes
   anti_cheat.py     AST-level patch hygiene
   describe.py       the only model call, with its post-check
+  s3_io.py          seam one: the S3 client
+  ddb_io.py         seam two: the DynamoDB table resource
+  local_store.py    objects of both shapes, backed by a directory and SQLite
+server/
+  app.py            the ASGI port: HTTP in, API Gateway v2 event out, and the
+                    startup checks that refuse a silent misconfiguration
 infra/
   template.yaml     the single SAM template, local and deployed
   statemachine/     the Step Functions definition
   docker/           per-repo image build and the vetted repo list
   local/            LocalStack orchestration, with its own detailed README
 web/
+  app/              routes, including /signin for the account screen
   lib/              logic, each file with its own test
   components/       screens and UI
-tests/              369 pytest tests
+  app/globals.css   the design tokens both themes resolve through
+tests/              403 pytest tests
 ```
 
 ---
 
 ## Verification
 
-- **369 Python tests** covering the operators, the coverage map, selection and
-  scoring, packaging, the anti-cheat rules, grading, and each handler.
+- **403 Python tests** covering the operators, the coverage map, selection and
+  scoring, packaging, the anti-cheat rules, grading, each handler, the OAuth
+  flow driven end to end through the ASGI app, and the startup checks.
 - **126 web tests** covering patch construction, traceback parsing for both
   languages, the tar reader, session merging, solve scope rules, reveal
   formatting and the profile arithmetic.

@@ -20,7 +20,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="dark">
+    /*
+     * suppressHydrationWarning is required, not cosmetic: THEME_BOOT rewrites
+     * data-theme before React hydrates, so for any viewer whose theme is not
+     * the SSR default the attribute on <html> legitimately differs from what
+     * the server sent. This is the documented pattern for a pre-paint theme
+     * script, and it suppresses only this one element's attribute check.
+     */
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
       <head>
         {/* before first paint, so a light viewer never sees a dark flash */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />

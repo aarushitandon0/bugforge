@@ -647,3 +647,109 @@
     background-image: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * scroll-driven reveals
+ *
+ * `animation-timeline: view()` ties an animation's progress to the element's
+ * own position in the viewport, so a card animates AS IT IS SCROLLED INTO
+ * VIEW. This is not the same thing as `animate-rise`, which runs once on load
+ * and is therefore already finished by the time anything below the fold is
+ * reached -- which is what made the lower half of the home page read as dead.
+ *
+ * No JavaScript, no observer, no hydration concern: the browser drives it.
+ * Wrapped in @supports because Firefox and Safari do not implement it yet,
+ * and the correct fallback there is simply to show the content.
+ * ------------------------------------------------------------------------ */
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 34px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reveal-side {
+  from {
+    opacity: 0;
+    transform: translate3d(-26px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* The printed shadow arrives with the card rather than being there already,
+   which is what makes a brutalist card feel stamped onto the page. */
+@keyframes reveal-stamp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+    box-shadow: 0 0 0 0 var(--shadow-ink);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    box-shadow: var(--shadow-brut);
+  }
+}
+
+@keyframes scroll-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@layer components {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: reveal-in linear both;
+        animation-timeline: view();
+        /* Finishes a little over halfway up the viewport, so the card has
+           settled by the time it is somewhere you would actually read it. */
+        animation-range: entry 0% entry 62%;
+      }
+
+      .reveal-stamp {
+        animation: reveal-stamp linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 62%;
+      }
+
+      /* Section headings come from the side, so a heading and the cards under
+         it do not all move on the same axis at the same moment. */
+      .reveal-side {
+        animation: reveal-side linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 50%;
+      }
+    }
+  }
+
+  /*
+   * The read-position bar under the header. `scroll(root)` drives it from the
+   * document's own scroll offset, so it is a real progress indicator rather
+   * than a decoration.
+   */
+  .scroll-progress {
+    height: 3px;
+    background: var(--accent);
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+  }
+
+  @supports (animation-timeline: scroll(root)) {
+    .scroll-progress {
+      animation: scroll-progress linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+}

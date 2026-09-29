@@ -6,9 +6,11 @@ import { ApiError, getRepos, startForge, type Forgeable } from "@/lib/api";
 import { HEADLINE, VETTED_REPOS } from "@/lib/forge-data";
 import { normalizeRepoUrl, parseRepoInput, repoDisplay } from "@/lib/format";
 import { rulesFor } from "@/lib/lang";
+import { Cursor } from "../Cursor";
 import { ForgeStream, type LocalLine } from "../ForgeStream";
 import { Mascot } from "../Mascot";
 import { buttonClass } from "../ui/Button";
+import { HomeSections } from "./HomeSections";
 
 /*
  * Repos worth showing that no image exists for yet. They used to render at
@@ -131,12 +133,13 @@ export function Landing() {
   const chip = buttonClass("secondary", "sm");
 
   return (
-    /*
+    <>
+    {/*
      * Two columns on a wide screen: the pitch and the input on the left, the
      * stream on the right. The grid stretches both, so the stream's bottom
      * edge and the stats line at the foot of the left column resolve to the
      * same baseline instead of ending 80px apart.
-     */
+     */}
     <div className="grid grid-cols-1 gap-8 pt-10 pb-6 lg:grid-cols-2 lg:gap-16 lg:pt-14">
       <section className="flex min-w-0 flex-col">
         {/* The rotated chip stack the reference sits above every headline. */}
@@ -153,14 +156,19 @@ export function Landing() {
         </div>
 
         {/*
-         * No max-width and no cursor. The cursor is sized in `em`, so at the
-         * display step it rendered as a ~100x55px black slab beside "gym."
-         * rather than as a caret; the wordmark in the header still carries one
-         * at a size where it reads as what it is.
+         * The cursor is sized in `em`, so at the display step it renders as a
+         * ~100x55px slab rather than a caret. It keeps blinking -- it is the
+         * app's signature -- but at a fixed pixel size that reads as a caret
+         * next to 68px type instead of as a fourth word.
          */}
         <h1 className="t-display mt-6 text-text">
           Every repo is a <span className="text-coral">debugging</span>{" "}
-          <span className="marker">gym.</span>
+          {/* The caret is nowrap-bound to the word it follows: on its own it
+              wrapped to a line by itself and read as a stray black block. */}
+          <span className="whitespace-nowrap">
+            <span className="marker">gym.</span>
+            <Cursor className="ml-3 !h-6 !w-3 !translate-y-0 align-middle" />
+          </span>
         </h1>
         <p className="prose mt-7 max-w-[52ch] text-muted">
           Paste any public repo with a test suite. BugForge breaks it the way it would break in production, hands you
@@ -285,7 +293,17 @@ export function Landing() {
         </div>
       </section>
 
-      <section aria-label="generation stream" className="relative min-h-[420px] min-w-0 lg:min-h-[560px]">
+      {/*
+       * A FIXED height, not a minimum.
+       *
+       * The Panel body is already `overflow-auto`, but `h-full` inside a
+       * min-height section resolves to nothing, so the terminal grew a row at
+       * a time and pushed the whole page down with it -- 120 classified rows
+       * turned the hero into several screens of scroll. Pinning the height
+       * gives the body something to be 100% of, and the rows scroll inside it
+       * the way they would in a real terminal.
+       */}
+      <section aria-label="generation stream" className="relative h-[460px] min-w-0 lg:h-[640px]">
         {/*
          * The mascot straddles the terminal's BOTTOM-left corner, where the
          * stream has run out of rows and the panel is empty. It previously sat
@@ -310,5 +328,8 @@ export function Landing() {
         <ForgeStream executionId={executionId} repoLabel={repoLabel} localLines={lines} legend />
       </section>
     </div>
+
+    <HomeSections />
+    </>
   );
 }

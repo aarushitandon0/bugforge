@@ -88,6 +88,9 @@ export function SiteHeader({
           <ThemeToggle />
         </div>
       </div>
+      {/* How far down the document you are, driven by the scroll position
+          itself rather than by a listener. */}
+      <div className="scroll-progress" aria-hidden />
       {!apiConfigured && (
         <div className="border-t-[3px] border-line bg-coral text-[#1a1423]">
           <p

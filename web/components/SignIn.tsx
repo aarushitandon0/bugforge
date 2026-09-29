@@ -13,7 +13,8 @@ import { LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiConfigured } from "@/lib/api";
 import { consumeAuthParams, useSession } from "@/lib/session";
-import { Button } from "./ui/Button";
+import Link from "next/link";
+import { Button, ButtonLink } from "./ui/Button";
 
 /**
  * The GitHub mark, inline. lucide-react dropped its brand icons, and this is
@@ -36,7 +37,7 @@ function GithubMark({ size = 14 }: { size?: number }) {
 }
 
 export function SignIn() {
-  const { user, loading, signIn, signOut } = useSession();
+  const { user, loading, signOut } = useSession();
   const [error, setError] = useState<string | null>(null);
 
   // The callback lands back here with ?signed_in=1 or ?auth_error=... . Strip
@@ -56,22 +57,31 @@ export function SignIn() {
             {error}
           </span>
         )}
-        <Button variant="secondary" size="sm" onClick={signIn}>
+        {/*
+         * Goes to /signin/ rather than redirecting straight to github.com.
+         * The extra step is the point: the account page says what an account
+         * buys before sending anyone off-site to approve one.
+         */}
+        <ButtonLink variant="secondary" size="sm" href="/signin/">
           <GithubMark />
           sign in
-        </Button>
+        </ButtonLink>
       </div>
     );
   }
 
   return (
     <div className="flex items-center gap-2">
-      {user.avatar_url ? (
-        // A plain <img>: avatar hosts are arbitrary, and next/image would need
-        // every GitHub CDN host allowlisted to render a 20px square.
-        <img src={user.avatar_url} alt="" width={20} height={20} className="border border-line" />
-      ) : null}
-      <span className="hidden text-text sm:inline">{user.login}</span>
+      {/* The identity is the way to the account page; the icon beside it stays
+          a one-click sign-out for anyone who only wants that. */}
+      <Link href="/signin/" className="flex items-center gap-2 t-label text-text hover:text-accent-hover">
+        {user.avatar_url ? (
+          // A plain <img>: avatar hosts are arbitrary, and next/image would need
+          // every GitHub CDN host allowlisted to render a 20px square.
+          <img src={user.avatar_url} alt="" width={22} height={22} className="size-[22px] border-2 border-line" />
+        ) : null}
+        <span className="hidden sm:inline">{user.login}</span>
+      </Link>
       <button
         type="button"
         onClick={signOut}
@@ -99,7 +109,7 @@ export function SignInToSubmit({ className = "" }: { className?: string }) {
      * in order to read a stack trace. The value comes first; the mechanics of
      * grading are on the landing page, where they belong.
      */
-    <div className={`rounded border border-line bg-surface-2 p-3 ${className}`}>
+    <div className={`border-2 border-line bg-surface-2 p-3 shadow-brut-sm ${className}`}>
       <p className="t-small text-muted">Progress follows you between devices, and a solve is recorded as yours.</p>
       <Button variant="secondary" size="sm" className="mt-2" onClick={signIn}>
         <GithubMark />

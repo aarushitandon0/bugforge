@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------
-# Private — never publish. Spoilers, local runs, personal notes.
+# Private. Never publish. Spoilers, local runs, personal notes.
 # ---------------------------------------------------------------
 
 # Challenge answer bundles: the patch that solves the bug.
@@ -7,7 +7,9 @@
 *answers.tar.gz
 **/answers/
 
-# Forge output: generated challenges, work trees, solved states.
+# Forge output: generated challenges, work trees, solved states. local_output/
+# is matched by *_output/ and is named again below, because it holds the
+# no-AWS run's state and its secrets file.
 phase3_output/
 phase5_output/
 phase*_output/
@@ -43,6 +45,15 @@ amplify/
 samconfig.toml
 *.tfvars
 .terraform/
+
+# Shell files that export credentials. local_output/secrets.sh holds a real
+# GitHub OAuth client secret and the session signing key, so it is matched
+# here as well as by *_output/ -- one rule failing must not be enough to
+# commit it. A *secrets.example.sh template, which holds no values, is
+# allowed through so a placeholder can be committed if one is ever wanted.
+secrets.sh
+*secrets.sh
+!*secrets.example.sh
 
 # ---------------------------------------------------------------
 # Python
@@ -103,6 +114,33 @@ tmp/
 # ---------------------------------------------------------------
 infra/local/volume/
 infra/local/.build/
+
+# ---------------------------------------------------------------
+# The no-AWS deploy (server/app.py + cloud/local_store.py)
+# ---------------------------------------------------------------
+# local_store backs S3 with a directory and DynamoDB with a SQLite file,
+# under whatever BUGFORGE_LOCAL_STORE points at. The default is inside
+# local_output/, but the path is configurable, so the store's own file
+# shapes are matched wherever it is pointed.
+local_output/
+store/
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+
+# Per-machine environment for that run. Written against whatever repo and
+# store this machine has; never useful to a reader.
+local_output/env.sh
+local_output/run_api.sh
+
+# ---------------------------------------------------------------
+# Next.js static export (web/.gitignore also covers this)
+# ---------------------------------------------------------------
+# `npm run build` with output: "export" writes web/out/, which is the
+# deployable artifact and is rebuilt from source every time.
+web/out/
+web/.next/
 
 # ---------------------------------------------------------------
 # Local run state. Generated per machine; never useful to a reader.

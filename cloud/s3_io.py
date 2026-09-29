@@ -13,9 +13,16 @@ _presigner = None
 
 
 def client():
+    """The S3 client, or the filesystem stand-in on a no-AWS deploy.
+
+    See cloud/local_store.py. The stand-in implements the same eight calls the
+    helpers below make, so nothing past this function knows which it has.
+    """
     global _s3
     if _s3 is None:
-        _s3 = boto3.client("s3")
+        from cloud import local_store
+
+        _s3 = local_store.s3() if local_store.enabled() else boto3.client("s3")
     return _s3
 
 
@@ -35,8 +42,15 @@ def presigner():
     """
     global _presigner
     if _presigner is None:
-        public = os.environ.get("S3_PUBLIC_ENDPOINT_URL")
-        _presigner = boto3.client("s3", endpoint_url=public) if public else client()
+        from cloud import local_store
+
+        if local_store.enabled():
+            # One store, one origin: the stand-in's URLs point at the server's
+            # own /files route, so there is no second endpoint to sign for.
+            _presigner = client()
+        else:
+            public = os.environ.get("S3_PUBLIC_ENDPOINT_URL")
+            _presigner = boto3.client("s3", endpoint_url=public) if public else client()
     return _presigner
 
 

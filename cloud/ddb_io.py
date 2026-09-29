@@ -16,6 +16,16 @@ _resource = None
 
 
 def table(name: str):
+    """The DynamoDB table, or the SQLite stand-in on a no-AWS deploy.
+
+    See cloud/local_store.py. The stand-in implements the five methods this
+    codebase calls, so no call site knows which it has.
+    """
+    from cloud import local_store
+
+    if local_store.enabled():
+        return local_store.table(name)
+
     global _resource
     if _resource is None:
         _resource = boto3.resource("dynamodb")

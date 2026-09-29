@@ -1,0 +1,4 @@
+# The single ASGI process that stands in for API Gateway + the Lambdas on a
+# deployment with no AWS account. Install alongside requirements.txt.
+fastapi>=0.115
+uvicorn[standard]>=0.30

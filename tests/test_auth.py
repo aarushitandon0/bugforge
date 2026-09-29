@@ -215,7 +215,8 @@ def test_the_explicit_mode_wins_over_the_legacy_switch(monkeypatch):
 
 def test_the_dev_identity_is_allowed_only_on_plain_http_local(monkeypatch):
     monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "insecure")
-    monkeypatch.delenv("SPACE_ID", raising=False)
+    for name in ("SPACE_ID", "K_SERVICE"):
+        monkeypatch.delenv(name, raising=False)
     assert auth.local_user_allowed()
 
 
@@ -224,14 +225,20 @@ def test_the_dev_identity_is_refused_on_any_https_deployment(monkeypatch, mode):
     # It would sign every visitor in as one account: one shared solved
     # history, one leaderboard row for everybody.
     monkeypatch.setenv("BUGFORGE_COOKIE_MODE", mode)
-    monkeypatch.delenv("SPACE_ID", raising=False)
+    for name in ("SPACE_ID", "K_SERVICE"):
+        monkeypatch.delenv(name, raising=False)
     assert not auth.local_user_allowed()
 
 
-def test_the_dev_identity_is_refused_in_a_space_even_on_insecure_cookies(monkeypatch):
-    # Setting both switches on the deployment still must not open it.
+@pytest.mark.parametrize("marker", ["SPACE_ID", "K_SERVICE"])
+def test_the_dev_identity_is_refused_when_hosted_even_on_insecure_cookies(monkeypatch, marker):
+    # Setting both switches on the deployment still must not open it. The
+    # markers are set by the platform (Hugging Face, Cloud Run), never by a
+    # developer's machine.
     monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "insecure")
-    monkeypatch.setenv("SPACE_ID", "someone/bugforge")
+    for name in ("SPACE_ID", "K_SERVICE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv(marker, "bugforge")
     assert not auth.local_user_allowed()
 
 

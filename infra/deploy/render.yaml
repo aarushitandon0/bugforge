@@ -1,0 +1,43 @@
+# Render blueprint. Read from the root of the DEPLOY repo (the one
+# push_bundle.sh writes), not from this repo -- make_bundle.sh copies it there.
+#
+# Render's free plan is 512MB and 0.1 CPU. That is a quarter of the memory the
+# Cloud Run deploy asks for, so it was measured rather than assumed: the full
+# smoke test passes at that cap, and grading a real submission against
+# tenacity's suite finishes in about 26s using ~56MB. See DEPLOY.md.
+#
+# Nothing here sets --no-cpu-throttling's equivalent, because Render has no
+# equivalent: it does not throttle CPU between requests, so the background
+# grading thread keeps running after the 202 goes out.
+services:
+  - type: web
+    name: bugforge
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+    # /api/ is the cheapest honest liveness signal: it reports the store and
+    # whether sign-in is configured, and it touches no challenge data.
+    healthCheckPath: /api/
+
+    envVars:
+      # PORT is injected by Render; entrypoint.sh already prefers it over the
+      # 7860 default. Do not set it here.
+      #
+      # `sync: false` means "ask me in the dashboard, do not keep the value in
+      # git". WEB_ORIGIN cannot be filled in before the first deploy anyway --
+      # the service URL does not exist yet, and the OAuth callback must not be
+      # derived from the incoming request. See DEPLOY.md, step two.
+      - key: WEB_ORIGIN
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+
+      # Generated once by Render and kept across deploys. Sessions signed with
+      # it survive a redeploy; they do not survive this value changing.
+      - key: SESSION_SECRET
+        generateValue: true

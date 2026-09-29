@@ -44,6 +44,7 @@ def browser(monkeypatch):
     monkeypatch.setenv("OAUTH_REDIRECT_URI", f"{ORIGIN}/api/auth/callback")
     monkeypatch.delenv("BUGFORGE_LOCAL_USER", raising=False)
     monkeypatch.delenv("SPACE_ID", raising=False)
+    monkeypatch.delenv("K_SERVICE", raising=False)
 
     monkeypatch.setattr(auth, "exchange_code", lambda code, uri: f"token-for-{code}")
     monkeypatch.setattr(auth, "fetch_user", lambda token: dict(USER))
@@ -56,9 +57,11 @@ class _Browser:
         self.jar: dict[str, str] = {}
 
     def __call__(self, method: str, path: str) -> dict:
+        """`path` is an API path; the /api prefix the app is mounted under is
+        added here so the tests read as the routes are spelled."""
         import asyncio
 
-        return asyncio.run(self._call(method, path))
+        return asyncio.run(self._call(method, "/api" + path))
 
     async def _call(self, method: str, path: str) -> dict:
         header_cookie = "; ".join(f"{k}={v}" for k, v in self.jar.items())

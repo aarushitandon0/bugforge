@@ -179,7 +179,31 @@ def _forgeable() -> list[dict]:
 # forge
 # ---------------------------------------------------------------------------
 
+def _forge_available() -> bool:
+    """Whether there is a pipeline to start.
+
+    The forge is eight Step Functions states over container-image Lambdas. A
+    deployment with no AWS account has none of that, and the state machine ARN
+    is how it says so. Without this check the route reaches `sfn()` and dies
+    on a missing environment variable, which reaches the landing page as a
+    bare 500.
+    """
+    return bool(os.environ.get("STATE_MACHINE_ARN"))
+
+
 def post_forge(event: dict) -> dict:
+    if not _forge_available():
+        return _response(
+            503,
+            {
+                "error": "forge_disabled",
+                "message": "forging is off on this deployment — it needs the Step Functions "
+                "pipeline, and this one runs without an AWS account. The challenges below "
+                "were forged by that pipeline offline.",
+                "forgeable": [],
+            },
+        )
+
     body = _body(event)
     repo_url = (body.get("repo_url") or "").strip() or config.repo_url()
 

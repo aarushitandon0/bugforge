@@ -99,16 +99,16 @@ export function HomeSections() {
   return (
     <>
       {/* ---- how a forge run works ------------------------------------- */}
-      <section className="border-t-[3px] border-line pt-16 pb-20" aria-labelledby="how">
+      <section className="rule-draw pt-16 pb-20" aria-labelledby="how">
         <SectionHead
           eyebrow="the pipeline"
           title={<span id="how">How a forge run works</span>}
           aside="Eight stages on Step Functions, against one container image with the repository and its full test dependencies baked in at build time. Nothing is cloned or installed at request time."
         />
 
-        <ol className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ol className="stagger mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {STAGES.map(([name, body], i) => (
-            <li key={name} className="brut brut-press reveal-stamp p-5">
+            <li key={name} className="brut brut-press tap reveal-stamp p-5">
               <span className="num-outline block">{String(i + 1).padStart(2, "0")}</span>
               <h3 className="t-label mt-4 text-text">{name}</h3>
               <p className="t-small mt-2 text-muted">{body}</p>
@@ -118,16 +118,16 @@ export function HomeSections() {
       </section>
 
       {/* ---- difficulty ------------------------------------------------- */}
-      <section className="border-t-[3px] border-line pt-16 pb-20" aria-labelledby="hard">
+      <section className="rule-draw pt-16 pb-20" aria-labelledby="hard">
         <SectionHead
           eyebrow="measured, not guessed"
           title={<span id="hard">Difficulty is three numbers</span>}
           aside="Each is measured before anyone sees the challenge, and the bands are cut from each repository's own distribution rather than at fixed thresholds."
         />
 
-        <dl className="mt-10 grid gap-4 lg:grid-cols-3">
+        <dl className="stagger mt-10 grid gap-4 lg:grid-cols-3">
           {WEIGHTS.map((w, i) => (
-            <div key={w.name} className="brut brut-press reveal-stamp p-5">
+            <div key={w.name} className="brut brut-press tap reveal-stamp p-5">
               <div className="flex items-baseline gap-3">
                 <span className="font-display text-[40px] leading-none font-black tabular-nums text-text">
                   {w.pct}
@@ -137,7 +137,7 @@ export function HomeSections() {
               </div>
               {/* the weight, drawn -- a gauge in a thick ink tube */}
               <div className="mt-4 h-[14px] w-full border-2 border-line bg-surface-3">
-                <div className="h-full bg-accent" style={{ width: `${w.pct}%` }} />
+                <div className="draw-x h-full bg-accent" style={{ width: `${w.pct}%` }} />
               </div>
               <dd className="t-small mt-3 text-muted">{w.body}</dd>
             </div>
@@ -162,11 +162,11 @@ export function HomeSections() {
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="stagger grid gap-4 sm:grid-cols-3">
               {GUARANTEES.map(({ icon: Icon, title, body }, i) => (
                 <div
                   key={title}
-                  className="reveal border-2 p-5"
+                  className="reveal tap border-2 p-5"
                 >
                   <Icon size={24} strokeWidth={2} className="text-accent" aria-hidden />
                   <h3 className="t-label mt-4 text-accent">{title}</h3>
@@ -179,7 +179,7 @@ export function HomeSections() {
       </section>
 
       {/* ---- closing call to action ------------------------------------- */}
-      <section className="border-t-[3px] border-line pt-16 pb-8" aria-labelledby="start">
+      <section className="rule-draw pt-16 pb-8" aria-labelledby="start">
         <div className="flex flex-wrap items-center justify-between gap-10">
           <div className="reveal-side min-w-0">
             <h2 id="start" className="t-display text-text">
@@ -195,7 +195,7 @@ export function HomeSections() {
           <div className="flex flex-wrap items-center gap-6">
             {/* The mascot finally gets room to be a mascot: the hero has none,
                 and this is the one block with nothing to collide with. */}
-            <Mascot className="pointer-events-none hidden w-[190px] shrink-0 reveal md:block" />
+            <Mascot className="pointer-events-none hidden w-[190px] shrink-0 animate-bob md:block" />
             <div className="flex flex-col gap-3">
               <ButtonLink href="/repos/" variant="primary" size="lg" arrow>
                 browse the bugs

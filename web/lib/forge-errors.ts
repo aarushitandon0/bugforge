@@ -27,7 +27,7 @@ export interface ForgeError {
 
 const UNREACHABLE_TODAY: Record<string, ForgeError> = {
   no_test_suite: {
-    what: "that repo has no test suite we can run",
+    what: "that repo has no test suite I can run",
     next: "BugForge grades with the repo's own tests, so a repo without them has nothing to grade against.",
   },
   not_python: {

@@ -308,11 +308,21 @@ def local_user_allowed() -> bool:
     history and one leaderboard row.
 
     `insecure` cookies are the honest marker for "this is plain http on
-    localhost", which is the only place the stand-in is correct. SPACE_ID is
-    set by Hugging Face in every Space container and is checked as well, so
-    setting both switches on the deployment still does not open it.
+    localhost", which is the only place the stand-in is correct. The hosting
+    markers below are checked as well, so setting both switches on a real
+    deployment still does not open it.
     """
-    return cookie_mode() == "insecure" and not os.environ.get("SPACE_ID")
+    return cookie_mode() == "insecure" and not _hosted()
+
+
+# Environment variables the hosting platform sets itself, which a developer's
+# machine never has. SPACE_ID is Hugging Face; K_SERVICE is Cloud Run (and
+# Knative generally). Neither can be faked into existence by accident.
+_HOSTING_MARKERS = ("SPACE_ID", "K_SERVICE")
+
+
+def _hosted() -> bool:
+    return any(os.environ.get(name) for name in _HOSTING_MARKERS)
 
 
 def set_cookie(name: str, value: str, max_age: int) -> str:

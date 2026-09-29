@@ -21,6 +21,7 @@ def clean(monkeypatch):
         "BUGFORGE_INSECURE_COOKIES",
         "BUGFORGE_LOCAL_USER",
         "SPACE_ID",
+        "K_SERVICE",
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GITHUB_CLIENT_ID_SECRET_ARN",

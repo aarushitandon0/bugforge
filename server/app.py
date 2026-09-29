@@ -56,7 +56,12 @@ ROUTES = [
     ("GET", "/leaderboard", fn_api),
 ]
 
-app = FastAPI(title="BugForge", docs_url=None, redoc_url=None, openapi_url=None)
+# The route-bearing application. It is mounted under /api below rather than
+# served at the root, because on the Space one origin serves both this and the
+# web app -- which is what lets the session cookie be first-party (see
+# auth.cookie_mode()). Locally the dev server proxies /api/* here, so the
+# prefix is the same in both places and no URL in the web app changes.
+api = FastAPI(title="BugForge", docs_url=None, redoc_url=None, openapi_url=None)
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +132,7 @@ def _bind(method: str, template: str, module) -> None:
 
     # The FastAPI path template and the routeKey template are the same string:
     # both spell a parameter {name}, so there is nothing to translate.
-    app.add_api_route(template, endpoint, methods=[method], include_in_schema=False)
+    api.add_api_route(template, endpoint, methods=[method], include_in_schema=False)
 
 
 for _method, _template, _module in ROUTES:
@@ -138,7 +143,7 @@ for _method, _template, _module in ROUTES:
 # the presigned-URL stand-in
 # ---------------------------------------------------------------------------
 
-@app.get("/files/{key:path}", include_in_schema=False)
+@api.get("/files/{key:path}", include_in_schema=False)
 def files(key: str) -> Response:
     """Serve one object from the local store's PUBLIC prefix. Nothing else.
 
@@ -177,7 +182,7 @@ def files(key: str) -> Response:
 # health
 # ---------------------------------------------------------------------------
 
-@app.get("/", include_in_schema=False)
+@api.get("/", include_in_schema=False)
 def root() -> JSONResponse:
     """Liveness, and the few facts worth seeing when the Space wakes up."""
     return JSONResponse(
@@ -225,7 +230,7 @@ def _check_config() -> None:
         raise ConfigError(
             "BUGFORGE_LOCAL_USER is set but this is not plain-http local development "
             f"(cookie mode {mode!r}"
-            + (", running in a Hugging Face Space" if os.environ.get("SPACE_ID") else "")
+            + (", running on a hosting platform" if auth._hosted() else "")
             + "). It would sign every visitor in as the same account, so they would "
             "share one solved history and one leaderboard row. Unset it and configure "
             "GitHub OAuth, or leave the deployment signed-out only."
@@ -296,10 +301,44 @@ if _cors == "*":
 if _cors:
     from fastapi.middleware.cors import CORSMiddleware
 
-    app.add_middleware(
+    api.add_middleware(
         CORSMiddleware,
         allow_origins=[o.strip() for o in _cors.split(",") if o.strip()],
         allow_credentials=True,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["content-type"],
     )
+
+
+# ---------------------------------------------------------------------------
+# the outer application: /api, then the web app
+# ---------------------------------------------------------------------------
+# On the Space these two are one origin. That is the whole reason the session
+# cookie can be `SameSite=Lax` rather than `SameSite=None` (auth.COOKIE_FLAGS),
+# and the reason there is no CORS configuration to get wrong.
+#
+# Locally the web app runs under `next dev` instead and proxies /api/* here, so
+# BUGFORGE_WEB_DIR is unset and nothing is mounted at the root. The API lives
+# under the same /api prefix either way, so no URL in the web app changes
+# between local development and the deployment.
+
+app = FastAPI(title="BugForge", docs_url=None, redoc_url=None, openapi_url=None)
+app.mount("/api", api)
+
+_web_dir = os.environ.get("BUGFORGE_WEB_DIR", "").strip()
+if _web_dir:
+    from fastapi.staticfiles import StaticFiles
+
+    root_dir = Path(_web_dir)
+    if not (root_dir / "index.html").is_file():
+        raise ConfigError(
+            f"BUGFORGE_WEB_DIR={_web_dir!r} has no index.html in it. It must point at "
+            "the `next build` static export (web/out), not at the source tree."
+        )
+    # html=True is what makes `output: "export"` work: the app is built with
+    # trailingSlash, so /repos/ has to resolve to out/repos/index.html.
+    # Mounted last, because it answers every path that /api did not.
+    app.mount("/", StaticFiles(directory=str(root_dir), html=True), name="web")
+    log.info("serving the web app from %s", root_dir)
+else:
+    log.info("no BUGFORGE_WEB_DIR; serving the API only (the web app proxies to it)")

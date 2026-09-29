@@ -110,6 +110,7 @@ def local_dev(env, monkeypatch):
     monkeypatch.setenv("BUGFORGE_LOCAL_STORE", "/tmp/bugforge-store")
     monkeypatch.setenv("BUGFORGE_LOCAL_USER", "local-dev")
     monkeypatch.delenv("SPACE_ID", raising=False)
+    monkeypatch.delenv("K_SERVICE", raising=False)
 
 
 def test_the_dev_identity_signs_you_in_on_plain_http_local(local_dev, monkeypatch):

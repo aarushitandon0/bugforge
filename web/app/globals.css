@@ -255,6 +255,8 @@
   --animate-pop: pop 260ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
   --animate-ticker: ticker 24s linear infinite;
   --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
+  --animate-bob: bob 4.6s ease-in-out infinite;
+  --animate-stamp: stamp 380ms cubic-bezier(0.2, 1.5, 0.4, 1) both;
 
   @keyframes fade {
     from {
@@ -316,6 +318,31 @@
     }
     50% {
       opacity: 0.35;
+    }
+  }
+
+  /* The mascot idles instead of sitting still. Rotation as well as rise, so it
+     reads as a drawn character breathing rather than a sprite on a lift. */
+  @keyframes bob {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) rotate(-1.5deg);
+    }
+    50% {
+      transform: translate3d(0, -9px, 0) rotate(1.5deg);
+    }
+  }
+
+  /* The marker word landing on the headline: it overshoots and settles, which
+     is what makes a printed block look stamped rather than faded in. */
+  @keyframes stamp {
+    from {
+      opacity: 0;
+      transform: scale(1.35) rotate(-4deg);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
     }
   }
 }
@@ -438,7 +465,8 @@
     }
     .animate-blink,
     .animate-ticker,
-    .animate-pulse-dot {
+    .animate-pulse-dot,
+    .animate-bob {
       animation: none !important;
     }
   }
@@ -563,6 +591,42 @@
     box-shadow: var(--shadow-brut-sm);
   }
 
+  /*
+   * The click, as opposed to the hover.
+   *
+   * `brut-press` already slides a box into its shadow while the pointer is
+   * down, but the release was instant, so a click read as nothing. `.tap`
+   * gives the RELEASE a spring: the press itself is fast and linear (the
+   * finger is still down, so it must feel immediate), and the transition back
+   * overshoots slightly. Nothing here needs state, so it applies to plain
+   * buttons and to cards alike.
+   */
+  .tap {
+    transition:
+      transform 220ms cubic-bezier(0.2, 1.6, 0.35, 1),
+      box-shadow 220ms cubic-bezier(0.2, 1.6, 0.35, 1),
+      background-color 120ms linear;
+  }
+  .tap:active {
+    transition-duration: 60ms, 60ms, 60ms;
+    transition-timing-function: linear;
+    transform: translate3d(4px, 4px, 0) scale(0.985);
+    box-shadow: var(--shadow-brut-sm);
+  }
+
+  /* An outlined numeral fills in when its card is pointed at, so the step
+     cards answer the pointer with colour rather than only with movement. */
+  .num-outline {
+    transition:
+      color 160ms linear,
+      -webkit-text-stroke-color 160ms linear;
+  }
+  .brut-press:hover .num-outline,
+  .tap:hover .num-outline {
+    color: var(--accent);
+    -webkit-text-stroke-color: var(--border);
+  }
+
   /* A chip: the small rotated uppercase badge the reference stacks above its
      headlines. --chip-rot is set per instance so a row of them is not uniform. */
   .chip {
@@ -661,40 +725,75 @@
  * Wrapped in @supports because Firefox and Safari do not implement it yet,
  * and the correct fallback there is simply to show the content.
  * ------------------------------------------------------------------------ */
+/*
+ * The reveals animate TRANSFORM ONLY, and are paired with the separate `fade`
+ * animation at every call site.
+ *
+ * The split is what makes `animation-composition: add` usable: added
+ * composition applies to every property in a keyframe, and adding an opacity
+ * of 0 to the element's own 1 leaves 1 -- the fade would silently do nothing.
+ * So each reveal runs two animations on the same timeline and range: the
+ * movement, added on top of whatever the pointer is doing to the element, and
+ * the fade, which replaces as normal.
+ */
 @keyframes reveal-in {
   from {
-    opacity: 0;
     transform: translate3d(0, 34px, 0);
   }
   to {
-    opacity: 1;
     transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes reveal-side {
   from {
-    opacity: 0;
     transform: translate3d(-26px, 0, 0);
   }
   to {
-    opacity: 1;
     transform: translate3d(0, 0, 0);
   }
 }
 
-/* The printed shadow arrives with the card rather than being there already,
-   which is what makes a brutalist card feel stamped onto the page. */
+/*
+ * The card landing on the page: it rises the last 26px and grows the last 3%,
+ * so it reads as stamped down rather than faded in.
+ *
+ * It used to animate `box-shadow` from nothing to the printed offset as well,
+ * which was the nicer idea and had to go: these cards also carry `brut-press`,
+ * and a filled-forwards animation keeps owning every property it touches, so
+ * the hover lift and the click press -- both `transform` and `box-shadow` --
+ * were dead on every revealed card on the page. Transform alone can be
+ * composed (see `animation-composition` below); a shadow list cannot be added
+ * to without printing two shadows.
+ */
 @keyframes reveal-stamp {
   from {
-    opacity: 0;
-    transform: translate3d(0, 26px, 0);
-    box-shadow: 0 0 0 0 var(--shadow-ink);
+    transform: translate3d(0, 26px, 0) scale(0.97);
   }
   to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-    box-shadow: var(--shadow-brut);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* A tile arriving with a quarter-turn of rotation taken out of it. Used for the
+   flat colour blocks, which have no shadow of their own to stamp. */
+@keyframes reveal-pop {
+  from {
+    transform: translate3d(0, 22px, 0) scale(0.94);
+  }
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* A bar drawing itself from its left edge: the section rules and the weight
+   gauges. Transform rather than width, so it costs no layout. */
+@keyframes draw-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
   }
 }
 
@@ -710,26 +809,163 @@
 @layer components {
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
+      /*
+       * The range is the timing control, not `animation-delay`.
+       *
+       * A view() timeline has no clock: progress IS scroll position, so
+       * `animation-delay` in milliseconds does nothing to it. Staggering one
+       * card behind another therefore means starting it LATER IN ITS OWN
+       * ENTRY -- `--reveal-from` -- and `.stagger` below sets that per child
+       * so no call site has to compute a delay.
+       */
+      /*
+       * `animation-composition: add` on every reveal that moves something.
+       *
+       * Without it a reveal's final keyframe replaces the element's own
+       * `transform` for as long as the fill lasts, which is forever -- so the
+       * hover lift and the `.tap` press never reach the screen on any card
+       * below the fold. Added instead of replaced, the two transforms compose:
+       * the reveal contributes translate(0) at rest and the pointer's own
+       * transform is what you see. Kept off `.reveal-fade`, where adding
+       * opacities would cancel the fade out entirely.
+       *
+       * `animation-composition` and `animation-timeline` are written AFTER the
+       * `animation` shorthand in every rule below, never before and never in a
+       * shared rule of their own: the shorthand resets both longhands to their
+       * initial values, so a composition or a timeline declared earlier is
+       * wiped and the reveal quietly becomes a plain load-time animation.
+       *
+       * `add` composes the movement with whatever transform the pointer is
+       * applying; `replace` is the normal behaviour, for the paired fade. The
+       * timeline and the range are lists too, so one value covers both.
+       */
       .reveal {
-        animation: reveal-in linear both;
+        animation: reveal-in linear both, fade linear both;
+        animation-composition: add, replace;
         animation-timeline: view();
         /* Finishes a little over halfway up the viewport, so the card has
            settled by the time it is somewhere you would actually read it. */
-        animation-range: entry 0% entry 62%;
+        animation-range: entry var(--reveal-from, 0%) entry var(--reveal-to, 62%);
       }
 
       .reveal-stamp {
-        animation: reveal-stamp linear both;
+        animation: reveal-stamp linear both, fade linear both;
+        animation-composition: add, replace;
         animation-timeline: view();
-        animation-range: entry 0% entry 62%;
+        animation-range: entry var(--reveal-from, 0%) entry var(--reveal-to, 62%);
       }
 
       /* Section headings come from the side, so a heading and the cards under
          it do not all move on the same axis at the same moment. */
       .reveal-side {
-        animation: reveal-side linear both;
+        animation: reveal-side linear both, fade linear both;
+        animation-composition: add, replace;
         animation-timeline: view();
-        animation-range: entry 0% entry 50%;
+        animation-range: entry var(--reveal-from, 0%) entry var(--reveal-to, 50%);
+      }
+
+      /*
+       * Opacity only, no transform.
+       *
+       * For the stat row, whose four tiles are butted edge to edge inside ONE
+       * border and ONE printed shadow: moving or scaling a tile individually
+       * would open a gap in that shared box half way through the scroll. A
+       * fade staggers them one by one and leaves the box intact.
+       */
+      .reveal-fade {
+        animation: fade linear both;
+        animation-timeline: view();
+        animation-range: entry var(--reveal-from, 0%) entry var(--reveal-to, 55%);
+      }
+
+      .reveal-pop {
+        animation: reveal-pop linear both, fade linear both;
+        animation-composition: add, replace;
+        animation-timeline: view();
+        animation-range: entry var(--reveal-from, 0%) entry var(--reveal-to, 58%);
+      }
+
+      /*
+       * One by one. Each child of a `.stagger` row starts a little further
+       * into its own entry than the one before it, so a row of six cards
+       * arrives as a sequence instead of as a block. The last step is capped
+       * at 40% -- past that the final card is still moving when it is already
+       * well up the screen, which reads as lag rather than as rhythm.
+       */
+      .stagger > * {
+        --reveal-from: 0%;
+        --reveal-to: 52%;
+      }
+      .stagger > *:nth-child(2) {
+        --reveal-from: 8%;
+        --reveal-to: 60%;
+      }
+      .stagger > *:nth-child(3) {
+        --reveal-from: 16%;
+        --reveal-to: 68%;
+      }
+      .stagger > *:nth-child(4) {
+        --reveal-from: 24%;
+        --reveal-to: 76%;
+      }
+      .stagger > *:nth-child(5) {
+        --reveal-from: 32%;
+        --reveal-to: 84%;
+      }
+      .stagger > *:nth-child(n + 6) {
+        --reveal-from: 40%;
+        --reveal-to: 92%;
+      }
+
+      /*
+       * A gauge or a rule that draws itself as it is scrolled to.
+       *
+       * `cover`, not `entry`, and this is the whole reason: an `entry` range is
+       * as long as the element is TALL, so on a 14px gauge or a 3px rule the
+       * animation would be spent within 14px of scrolling and read as a snap.
+       * A `cover` range is the element's height plus the viewport's, so these
+       * flat bars draw over a few hundred pixels of scroll like everything
+       * else. Tall cards keep `entry`, where its length is what you want.
+       */
+      .draw-x {
+        animation: draw-x linear both;
+        animation-timeline: view();
+        animation-range: cover 0% cover 34%;
+      }
+    }
+  }
+
+  /*
+   * A section's top rule, drawn instead of printed.
+   *
+   * It replaces `border-t` on the sections that use it: the border would be
+   * there in full before the section was reached, which gave the eye the
+   * section's edge a screen early. Drawn left-to-right, it arrives with the
+   * heading.
+   */
+  .rule-draw {
+    position: relative;
+  }
+  .rule-draw::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--border);
+    transform-origin: 0 50%;
+  }
+
+  .draw-x {
+    transform-origin: 0 50%;
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .rule-draw::before {
+        animation: draw-x linear both;
+        animation-timeline: view();
+        /* `cover` for the same reason as `.draw-x`: the rule is 3px tall. */
+        animation-range: cover 0% cover 16%;
       }
     }
   }

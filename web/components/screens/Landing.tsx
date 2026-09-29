@@ -166,11 +166,19 @@ export function Landing() {
           {/* The caret is nowrap-bound to the word it follows: on its own it
               wrapped to a line by itself and read as a stray black block. */}
           <span className="whitespace-nowrap">
-            <span className="marker">gym.</span>
+            {/* The amber block lands on the headline a beat after the words
+                themselves, overshooting once -- it is the only element in the
+                hero that is printed rather than typed. */}
+            <span className="marker animate-stamp" style={{ animationDelay: "220ms" }}>
+              gym.
+            </span>
             <Cursor className="ml-3 !h-6 !w-3 !translate-y-0 align-middle" />
           </span>
         </h1>
-        <p className="prose mt-7 max-w-[52ch] text-muted">
+        {/* The hero arrives top to bottom: headline, then the pitch, then the
+            control. Each step is 110ms behind the last, which is long enough to
+            read as a sequence and short enough not to delay the input. */}
+        <p className="prose animate-rise mt-7 max-w-[52ch] text-muted" style={{ animationDelay: "110ms" }}>
           Paste any public repo with a test suite. BugForge breaks it the way it would break in production, hands you
           the stack trace, and checks your fix. Nothing here was written by hand.
         </p>
@@ -182,7 +190,8 @@ export function Landing() {
          * rather than a product.
          */}
         <form
-          className="mt-7 flex flex-col border-[3px] border-line bg-surface-2 shadow-brut transition-shadow duration-[120ms] focus-within:shadow-brut-lg sm:h-14 sm:flex-row"
+          className="animate-rise mt-7 flex flex-col border-[3px] border-line bg-surface-2 shadow-brut transition-shadow duration-[120ms] focus-within:shadow-brut-lg sm:h-14 sm:flex-row"
+          style={{ animationDelay: "220ms" }}
           onSubmit={(e) => {
             e.preventDefault();
             forge(input);
@@ -211,7 +220,11 @@ export function Landing() {
             className={buttonClass(
               "primary",
               "lg",
-              "shrink-0 !border-0 !border-t-[3px] !shadow-none !transform-none disabled:cursor-wait sm:h-auto sm:self-stretch sm:!border-t-0 sm:!border-l-[3px]",
+              /* `forging…` pulses rather than just sitting there disabled: it
+                 is the one control whose work takes seconds. */
+              `shrink-0 !border-0 !border-t-[3px] !shadow-none !transform-none disabled:cursor-wait sm:h-auto sm:self-stretch sm:!border-t-0 sm:!border-l-[3px] ${
+                starting ? "animate-pulse-dot" : ""
+              }`,
             )}
           >
             {starting ? "forging…" : "forge bugs"}
@@ -223,29 +236,49 @@ export function Landing() {
          * whose name is currently in the box -- which is the only distinction
          * that tells the reader anything.
          */}
-        <div className="mt-3 flex min-h-8 flex-wrap items-center gap-2">
+        <div
+          className="animate-rise mt-3 flex min-h-8 flex-wrap items-center gap-2"
+          style={{ animationDelay: "330ms" }}
+        >
           {examples.length > 0 && <span className="t-small text-muted">try</span>}
-          {examples.map(({ display, language }) => (
-            <button
+          {examples.map(({ display, language }, i) => (
+            /*
+             * The pop lives on a WRAPPER, not on the button.
+             *
+             * `animate-pop` fills forwards, so its final keyframe keeps owning
+             * `transform` for good -- put it on the button itself and the
+             * hover lift and the `.tap` press, which are also transforms, stop
+             * working entirely. The wrapper pops the chip in one at a time as
+             * the repo list lands; the button keeps its transform for the
+             * pointer.
+             */
+            <span
               key={display}
-              type="button"
-              aria-pressed={input.trim().toLowerCase() === display.toLowerCase()}
-              onClick={() => {
-                setInput(display);
-                forge(display);
-              }}
-              className={buttonClass(
-                "secondary",
-                "sm",
-                input.trim().toLowerCase() === display.toLowerCase() ? "border-line-strong bg-surface-2" : "",
-              )}
+              className="animate-pop inline-flex"
+              style={
+                { "--pop-rot": i % 2 ? "1.5deg" : "-1.5deg", animationDelay: `${380 + i * 80}ms` } as React.CSSProperties
+              }
             >
-              {display}
-              {/* The language, not decoration: picking an example is really
-                  picking a language, and the two on offer behave differently
-                  enough that a learner should know which one they clicked. */}
-              <span className="text-muted">{rulesFor(language).label}</span>
-            </button>
+              <button
+                type="button"
+                aria-pressed={input.trim().toLowerCase() === display.toLowerCase()}
+                onClick={() => {
+                  setInput(display);
+                  forge(display);
+                }}
+                className={buttonClass(
+                  "secondary",
+                  "sm",
+                  `tap ${input.trim().toLowerCase() === display.toLowerCase() ? "border-line-strong bg-surface-2" : ""}`,
+                )}
+              >
+                {display}
+                {/* The language, not decoration: picking an example is really
+                    picking a language, and the two on offer behave differently
+                    enough that a learner should know which one they clicked. */}
+                <span className="text-muted">{rulesFor(language).label}</span>
+              </button>
+            </span>
           ))}
         </div>
 
@@ -254,13 +287,12 @@ export function Landing() {
          * the reference's "how a drill works" row. Each one animates in behind
          * the last so the sequence reads as a sequence.
          */}
-        <ol className="mt-12 grid gap-4 border-t-[3px] border-line pt-10 sm:grid-cols-3">
+        {/* The rule above the row draws itself as the row is scrolled to, and
+            `stagger` brings the three cards in one after another rather than as
+            one block. Both are scroll-driven: nothing here runs on load. */}
+        <ol className="rule-draw stagger mt-12 grid gap-4 pt-10 sm:grid-cols-3">
           {STEPS.map(([name, what], i) => (
-            <li
-              key={name}
-              className="brut brut-press animate-rise p-4"
-              style={{ animationDelay: `${i * 90}ms` }}
-            >
+            <li key={name} className="brut brut-press tap reveal-stamp p-4">
               <span className="num-outline block">{String(i + 1).padStart(2, "0")}</span>
               <h3 className="t-label mt-3 text-text">{name}</h3>
               <p className="t-small mt-2 text-muted">{what}</p>
@@ -274,7 +306,10 @@ export function Landing() {
          * shadow, as the reference does with its 2 / 7 / 8 row.
          */}
         <div className="mt-auto pt-10">
-          <dl className="flex flex-wrap border-[3px] border-line shadow-brut">
+          {/* The box lands as one printed object -- `stagger` then fades the
+              four figures up inside it one at a time, so the row counts itself
+              off instead of switching on. */}
+          <dl className="reveal-stamp stagger flex flex-wrap border-[3px] border-line shadow-brut">
             {[
               { value: HEADLINE.candidates, label: "candidates", fill: "bg-surface-2 text-text" },
               { value: HEADLINE.covered, label: "on covered lines", fill: "bg-accent text-accent-fg" },
@@ -283,7 +318,9 @@ export function Landing() {
             ].map((stat, i) => (
               <div
                 key={stat.label}
-                className={`min-w-0 flex-1 px-3 py-3 ${stat.fill} ${i > 0 ? "border-l-[3px] border-line" : ""}`}
+                className={`reveal-fade min-w-0 flex-1 px-3 py-3 ${stat.fill} ${
+                  i > 0 ? "border-l-[3px] border-line" : ""
+                }`}
               >
                 <dd className="font-display text-[26px] leading-none font-black tabular-nums">{stat.value}</dd>
                 <dt className="t-label mt-1.5 break-words">{stat.label}</dt>
@@ -324,7 +361,10 @@ export function Landing() {
          * floating over live output. It only appears from lg up, where that
          * strip exists at all.
          */}
-        <Mascot className="pointer-events-none absolute right-3 -bottom-6 z-10 hidden w-[118px] animate-rise lg:block" />
+        {/* It idles rather than arriving and stopping: `animate-bob` replaces
+            the one-shot rise, because a character that never moves again reads
+            as a sticker. */}
+        <Mascot className="pointer-events-none absolute right-3 -bottom-6 z-10 hidden w-[118px] animate-bob lg:block" />
         <ForgeStream executionId={executionId} repoLabel={repoLabel} localLines={lines} legend />
       </section>
     </div>

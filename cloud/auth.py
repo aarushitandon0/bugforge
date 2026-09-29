@@ -20,11 +20,15 @@ signs) and fn_api (which verifies), and can do nothing beyond mint sessions
 for this stack. Collapsing them into one secret would hand every route the
 ability to talk to GitHub as the app.
 
-**The cookie is cross-site.** The web app is on Amplify and the API is on
-execute-api, so the session cookie must be `SameSite=None; Secure` and the API
-must send `Access-Control-Allow-Credentials: true` against a *specific*
-origin. `WebOrigin="*"` and credentials are mutually exclusive by spec, so
-deploying auth requires a real WebOrigin -- see FEATURES.md, "Deploying".
+**Where the cookie has to work decides its attributes.** On AWS the web app
+is on Amplify and the API is on execute-api, so the session cookie must be
+`SameSite=None; Secure` and the API must send
+`Access-Control-Allow-Credentials: true` against a *specific* origin;
+`WebOrigin="*"` and credentials are mutually exclusive by spec, so deploying
+auth there requires a real WebOrigin -- see FEATURES.md, "Deploying". On the
+single-origin HTTPS deployment and on local http the answers differ, and
+getting the choice wrong is silent, so `cookie_mode()` names it rather than
+guessing. See COOKIE_FLAGS below.
 """
 from __future__ import annotations
 
@@ -75,13 +79,30 @@ def _secrets():
     return _secrets_client
 
 
-def _secret(env_name: str) -> str:
-    """Reads a secret by ARN from the environment, cached for the container's life.
+# The plain names the same three secrets are spelled with when they are
+# supplied directly rather than by ARN. On AWS each variable holds a Secrets
+# Manager ARN; on a deployment with no AWS account at all (the Space) there is
+# no Secrets Manager, so the value itself is the environment variable. The
+# `<ENV_NAME>_VALUE` spelling did that first and still works, but it reads as
+# nonsense in a secrets UI -- GITHUB_CLIENT_ID_SECRET_ARN_VALUE is not an ARN
+# and is not a value of one. These are the same mechanism with a readable name.
+_INLINE_NAMES = {
+    "GITHUB_CLIENT_ID_SECRET_ARN": "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET_ARN": "GITHUB_CLIENT_SECRET",
+    "SESSION_SIGNING_SECRET_ARN": "SESSION_SECRET",
+}
 
-    A local/test override (`<ENV_NAME>_VALUE`) exists so the whole auth path can
-    be exercised without AWS; it is never set in the deployed template.
+
+def _secret(env_name: str) -> str:
+    """Reads a secret from the environment, cached for the container's life.
+
+    Three sources, in order: `<ENV_NAME>_VALUE`, the plain name in
+    `_INLINE_NAMES`, and finally the variable itself read as a Secrets Manager
+    ARN. The first two are the same thing -- the secret supplied inline -- and
+    are what a deployment without an AWS account uses. Only the third talks to
+    AWS, so importing boto3's Secrets Manager client never happens off AWS.
     """
-    inline = os.environ.get(f"{env_name}_VALUE")
+    inline = os.environ.get(f"{env_name}_VALUE") or os.environ.get(_INLINE_NAMES.get(env_name, ""))
     if inline:
         return inline
     arn = os.environ.get(env_name)
@@ -224,24 +245,74 @@ def cookie(event: dict, name: str) -> str | None:
     return None
 
 
-def cookie_flags() -> str:
-    """The attributes every cookie this module sets carries.
+# Three deployments, three correct answers, and the wrong one fails silently:
+# a browser that dislikes a cookie's attributes does not complain, it simply
+# never stores it, and sign-in then appears to do nothing at all. So the mode
+# is named rather than inferred.
+COOKIE_FLAGS = {
+    # The web app and the API are on different registrable domains (Amplify
+    # and execute-api). A `Lax` cookie would never be sent on those requests
+    # at all, so it has to be `SameSite=None`, and `Secure` is mandatory
+    # alongside `None`. The API must then also answer with
+    # Access-Control-Allow-Credentials against a specific origin.
+    "cross_site": "HttpOnly; Secure; SameSite=None",
+    # One HTTPS origin serves both the app and the API, so the cookie is
+    # first-party and `Lax` is both sufficient and stricter: it is not sent on
+    # cross-site requests, which removes the CSRF exposure `None` accepts.
+    "same_origin": "HttpOnly; Secure; SameSite=Lax",
+    # Local development: no TLS, and a browser drops a `Secure` cookie from a
+    # plain-http origin unless that origin is literally localhost. The local
+    # setup proxies the API under the web app's own origin, so this is
+    # `same_origin` with `Secure` removed because there is nothing to secure.
+    "insecure": "HttpOnly; SameSite=Lax",
+}
 
-    Deployed, the web app and the API are on different registrable domains, so
-    the cookie has to be `SameSite=None` to be sent at all, and `Secure` is
-    mandatory alongside it.
 
-    Locally there is no TLS, and a browser drops a `Secure` cookie from a
-    plain-http origin unless that origin is literally localhost. Setting
-    BUGFORGE_INSECURE_COOKIES=true swaps in the first-party pair -- which is
-    correct there, because the local setup proxies the API under the web app's
-    own origin (see infra/local/README.md). It is a local-development switch
-    and nothing else: on http, `Secure`-less is what the browser would keep,
-    and on a real deployment leaving it unset keeps the cross-site pair.
+def cookie_mode() -> str:
+    """Which of COOKIE_FLAGS this deployment wants.
+
+    BUGFORGE_COOKIE_MODE names it. Unset, the legacy BUGFORGE_INSECURE_COOKIES
+    switch still selects `insecure`, and the default stays `cross_site` so the
+    AWS stack behaves exactly as it did.
+
+    An unrecognised value raises rather than falling back, because falling back
+    is the failure this whole function exists to prevent: a typo would hand
+    back attributes the browser discards, and the only symptom is that signing
+    in does nothing.
     """
+    mode = os.environ.get("BUGFORGE_COOKIE_MODE", "").strip().lower()
+    if mode:
+        if mode not in COOKIE_FLAGS:
+            raise AuthError(
+                f"BUGFORGE_COOKIE_MODE={mode!r} is not one of {sorted(COOKIE_FLAGS)}"
+            )
+        return mode
     if os.environ.get("BUGFORGE_INSECURE_COOKIES", "").lower() == "true":
-        return "HttpOnly; SameSite=Lax"
-    return "HttpOnly; Secure; SameSite=None"
+        return "insecure"
+    return "cross_site"
+
+
+def cookie_flags() -> str:
+    """The attributes every cookie this module sets carries."""
+    return COOKIE_FLAGS[cookie_mode()]
+
+
+def local_user_allowed() -> bool:
+    """Whether the fixed dev identity (BUGFORGE_LOCAL_USER) may stand in for a
+    real sign-in.
+
+    Only on plain-http local development. The stand-in exists because there is
+    no TLS and no GitHub OAuth app on a developer's machine; anything reachable
+    over HTTPS is reachable by everyone, and there the stand-in would hand
+    every visitor the same account, so every visitor would share one solved
+    history and one leaderboard row.
+
+    `insecure` cookies are the honest marker for "this is plain http on
+    localhost", which is the only place the stand-in is correct. SPACE_ID is
+    set by Hugging Face in every Space container and is checked as well, so
+    setting both switches on the deployment still does not open it.
+    """
+    return cookie_mode() == "insecure" and not os.environ.get("SPACE_ID")
 
 
 def set_cookie(name: str, value: str, max_age: int) -> str:

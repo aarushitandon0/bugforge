@@ -97,6 +97,50 @@ def test_a_stack_with_no_signing_secret_stays_usable_signed_out(env, monkeypatch
 
 
 # ---------------------------------------------------------------------------
+# the fixed dev identity
+# ---------------------------------------------------------------------------
+# BUGFORGE_LOCAL_USER signs every request in as one account so a developer can
+# use the site without registering a GitHub OAuth app. `_off_aws()` used to be
+# the whole gate, which stopped being enough once the no-AWS deployment
+# started running on the filesystem store: that is "off AWS" too, and there
+# the stand-in would hand every visitor the same solved history.
+
+@pytest.fixture
+def local_dev(env, monkeypatch):
+    monkeypatch.setenv("BUGFORGE_LOCAL_STORE", "/tmp/bugforge-store")
+    monkeypatch.setenv("BUGFORGE_LOCAL_USER", "local-dev")
+    monkeypatch.delenv("SPACE_ID", raising=False)
+
+
+def test_the_dev_identity_signs_you_in_on_plain_http_local(local_dev, monkeypatch):
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "insecure")
+    assert fn_api._local_user() == {"sub": "local-dev", "login": "local-dev", "avatar": ""}
+    assert json.loads(fn_api.get_me({})["body"])["user"]["login"] == "local-dev"
+
+
+def test_the_dev_identity_does_not_sign_you_in_on_the_deployment(local_dev, monkeypatch):
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "same_origin")
+    assert fn_api._local_user() is None
+    assert json.loads(fn_api.get_me({})["body"])["user"] is None
+    assert fn_api.post_submission({"body": "{}"})["statusCode"] == 401
+
+
+def test_the_dev_identity_does_not_sign_you_in_inside_a_space(local_dev, monkeypatch):
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "insecure")
+    monkeypatch.setenv("SPACE_ID", "someone/bugforge")
+    assert fn_api._local_user() is None
+
+
+def test_the_dev_identity_is_still_ignored_on_real_aws(env, monkeypatch):
+    # The original gate, unchanged: real AWS sets neither store switch.
+    monkeypatch.delenv("BUGFORGE_LOCAL_STORE", raising=False)
+    monkeypatch.delenv("AWS_ENDPOINT_URL", raising=False)
+    monkeypatch.setenv("BUGFORGE_LOCAL_USER", "local-dev")
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "insecure")
+    assert fn_api._local_user() is None
+
+
+# ---------------------------------------------------------------------------
 # identity
 # ---------------------------------------------------------------------------
 

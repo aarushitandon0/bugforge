@@ -123,10 +123,20 @@ def main(output_dir: str) -> int:
     if not out.is_dir():
         raise SystemExit(str(out) + " is not a directory")
 
-    stack = os.environ.get("STACK_NAME", "bugforge-local")
-    os.environ.update(stack_environment(stack))
+    # Two ways to know where to write. Against a LocalStack/AWS stack the
+    # table names and bucket are read off CloudFormation, so this cannot drift
+    # from the stack it is seeding. Against the filesystem/SQLite store there
+    # is no stack to read: the environment already names them (see
+    # cloud/local_store.py), so it is left exactly as the caller set it.
+    from cloud import local_store
 
-    from cloud import config, ddb_io  # imported after the environment is in place
+    if local_store.enabled():
+        stack = os.environ["BUGFORGE_LOCAL_STORE"]
+    else:
+        stack = os.environ.get("STACK_NAME", "bugforge-local")
+        os.environ.update(stack_environment(stack))
+
+    from cloud import config, ddb_io, s3_io  # imported after the environment is in place
 
     selection = json.loads((out / "selection.json").read_text(encoding="utf-8"))
     challenges = json.loads((out / "challenges.json").read_text(encoding="utf-8"))
@@ -139,7 +149,9 @@ def main(output_dir: str) -> int:
     by_site = {site_key(r["site"]): r for r in results}
 
     bucket = config.bucket()
-    s3 = boto3.client("s3")
+    # The real S3 client, or the filesystem stand-in -- the four calls below
+    # are the same either way.
+    s3 = s3_io.client()
     now = int(time.time())
 
     written = 0

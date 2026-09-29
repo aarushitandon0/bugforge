@@ -12,10 +12,10 @@ export function Loading({ text }: { text: string }) {
 
 export function ErrorLine({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <p className="py-6 text-gap" role="alert">
+    <p className="my-6 w-fit border-2 border-line bg-coral px-3 py-2 font-bold text-[#1a1423] shadow-brut-sm" role="alert">
       ✗ {message}
       {onRetry && (
-        <button type="button" onClick={onRetry} className="link ml-4 text-text">
+        <button type="button" onClick={onRetry} className="ml-4 underline decoration-2 underline-offset-4">
           retry
         </button>
       )}
@@ -36,16 +36,24 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="pt-16 pb-8">
+    <header className="pt-14 pb-8">
       {back && (
-        <ButtonLink variant="secondary" size="sm" href={back.href} className="mb-6">
-          <ArrowLeft size={14} strokeWidth={1.5} aria-hidden />
+        <ButtonLink variant="secondary" size="sm" href={back.href} className="mb-7">
+          <ArrowLeft size={14} strokeWidth={2.5} aria-hidden />
           {back.label}
         </ButtonLink>
       )}
-      {eyebrow && <p className="label mb-3">{eyebrow}</p>}
-      <h1 className="t-h1 text-text">{title}</h1>
-      {children && <div className="mt-3 max-w-[72ch] text-muted">{children}</div>}
+      {/* The eyebrow is a printed chip, not a line of small text -- it is the
+          reference's one consistent move above every section title. */}
+      {eyebrow && (
+        <p className="mb-4">
+          <span className="chip" style={{ "--chip-rot": "-1.5deg" } as React.CSSProperties}>
+            {eyebrow}
+          </span>
+        </p>
+      )}
+      <h1 className="t-h1 max-w-[20ch] text-text">{title}</h1>
+      {children && <div className="prose mt-4 max-w-[62ch] text-muted">{children}</div>}
     </header>
   );
 }

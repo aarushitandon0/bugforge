@@ -117,8 +117,15 @@ export function DifficultyBars({
             }
           >
             <span className="flex flex-col items-center gap-1">
-              <span className={`relative block border border-line ${tall ? "h-[52px] w-[14px]" : "h-7 w-[7px]"}`}>
-                <span className="absolute inset-x-0 bottom-0 bg-text" style={{ height: `${fill * 100}%` }} />
+              {/* Amber fill in a thick ink tube: the bar is a gauge, and the
+                  accent is the one colour that reads as "how much" here. */}
+              <span
+                className={`relative block border-2 border-line bg-surface-2 ${tall ? "h-[52px] w-[16px]" : "h-7 w-[9px]"}`}
+              >
+                <span
+                  className="absolute inset-x-0 bottom-0 bg-accent transition-[height] duration-300"
+                  style={{ height: `${fill * 100}%` }}
+                />
               </span>
               {/* the full word needs ~54px a bar; below sm that overflows a card,
                   so the short letter stands in and the tooltip carries the name */}

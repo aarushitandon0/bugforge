@@ -917,7 +917,7 @@ function Workbench({ id, bundle }: { id: string; bundle: Bundle }) {
               )}
               {activeReadOnly && (
                 <span
-                  className="rounded border border-gap px-1.5 py-0.5 text-gap"
+                  className="border-2 border-line bg-coral px-1.5 py-0.5 font-bold text-[#1a1423]"
                   title="test files and non-source files can't be patched: the suite is the judge"
                 >
                   read-only &middot; edit the source file instead
@@ -1057,7 +1057,9 @@ function Workbench({ id, bundle }: { id: string; bundle: Bundle }) {
                 type="button"
                 onClick={submit}
                 disabled={grading}
-                className="w-full rounded border border-keep px-3 py-2 text-keep transition-colors duration-[120ms] hover:bg-keep hover:text-surface disabled:border-line disabled:text-muted disabled:hover:bg-transparent"
+                /* `text-surface` was never a token, so the old hover changed
+                   the fill without changing the letterform. Ink on green. */
+                className="w-full border-2 border-line bg-green px-3 py-2 font-bold uppercase tracking-[0.12em] text-[#1a1423] shadow-brut-sm transition-colors duration-[120ms] hover:brightness-95 disabled:bg-surface-3 disabled:text-muted"
               >
                 {grading ? "grading…" : `submit fix (${mod}↵)`}
               </button>

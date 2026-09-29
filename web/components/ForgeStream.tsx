@@ -256,7 +256,8 @@ export function ForgeStream({
      */
     <Panel
       data-theme="dark"
-      className="h-full text-text"
+      /* The terminal is flat: the page grid must not show through a screen. */
+      className="no-grid h-full text-text"
       padded={false}
       bodyClassName="overflow-auto p-card"
       bodyProps={{
@@ -292,7 +293,10 @@ export function ForgeStream({
         <span className="shrink-0 tabular-nums">
           {elapsed && <>{elapsed} · </>}
           {replaying ? (
-            <span className="rounded border border-line px-1.5 py-px" title="a real recorded forge, not a live one">
+            <span
+              className="border-2 border-line bg-accent px-1.5 py-px font-bold text-accent-fg"
+              title="a real recorded forge, not a live one"
+            >
               demo
             </span>
           ) : status ? (

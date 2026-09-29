@@ -145,7 +145,14 @@ never in the deployed template:
   submitting works with no OAuth app.
 
 Both are ignored unless `AWS_ENDPOINT_URL` is also set, so a real deployment
-cannot honour them even if a flag leaks in. `seed.py` also rewrites CRLF to LF
+cannot honour them even if a flag leaks in. `BUGFORGE_LOCAL_USER` carries a
+second gate on top of that: it is honoured only under `insecure` cookies and
+outside a Hugging Face Space (`auth.local_user_allowed()`). The no-AWS
+deployment also runs without `AWS_ENDPOINT_URL` but with a local store, so the
+first gate alone would have let it through, and there one dev identity means
+every visitor shares one solved history and one leaderboard row. `deploy.sh`
+passes `InsecureCookies=true`, which is what puts this stack on the allowed
+side. `seed.py` also rewrites CRLF to LF
 in the seeded trees: they were packaged on Windows, and `git apply` matches
 context byte for byte, so with CRLF every patch -- the correct one too -- is
 rejected as `patch_did_not_apply`.

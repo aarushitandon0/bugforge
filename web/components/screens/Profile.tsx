@@ -232,9 +232,9 @@ function IdentityCard({
       <div className="flex items-center gap-3">
         {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element -- one avatar, from github's CDN
-          <img src={avatar} alt="" className="h-11 w-11 rounded border border-line" />
+          <img src={avatar} alt="" className="h-11 w-11 border-2 border-line shadow-brut-sm" />
         ) : (
-          <div className="flex h-11 w-11 items-center justify-center rounded border border-line bg-surface-3 text-lg text-muted">
+          <div className="flex h-11 w-11 items-center justify-center rounded border-2 border-line bg-surface-3 text-lg text-muted">
             {login.slice(0, 1).toUpperCase()}
           </div>
         )}
@@ -307,9 +307,9 @@ function SolvedCard({
                     <span className="text-text">{thousands(done)}</span> / {thousands(all)}
                   </dd>
                 </div>
-                <div className="mt-1.5 h-1 w-full rounded bg-surface-3">
+                <div className="mt-2 h-[14px] w-full border-2 border-line bg-surface-3">
                   <div
-                    className={`h-1 rounded ${BAND_BG[band]}`}
+                    className={`h-full ${BAND_BG[band]}`}
                     style={{ width: `${width}%` }}
                     role="progressbar"
                     aria-valuenow={done}
@@ -367,11 +367,13 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 /** The five shades, lightest to darkest, matching the legend below the grid. */
 function cellClass(n: number): string {
+  /* Flat steps rather than alpha: on cream, a 30% green washes out to nearly
+     nothing, so each step is its own opaque value from the palette. */
   if (n === 0) return "bg-surface-3";
-  if (n === 1) return "bg-keep/30";
-  if (n === 2) return "bg-keep/55";
-  if (n < 5) return "bg-keep/80";
-  return "bg-keep";
+  if (n === 1) return "bg-accent/55";
+  if (n === 2) return "bg-accent";
+  if (n < 5) return "bg-green";
+  return "bg-green brightness-90";
 }
 
 /**
@@ -439,7 +441,7 @@ function ActivityCard({ days }: { days: number[] }) {
                     <div
                       key={day}
                       title={`${new Date(day).toDateString()}: ${plural(n, "bug")} fixed`}
-                      className={`h-[11px] w-[11px] rounded-[2px] ${cellClass(n)}`}
+                      className={`h-[12px] w-[12px] border border-line-soft ${cellClass(n)}`}
                     />
                   );
                 })}
@@ -458,7 +460,7 @@ function ActivityCard({ days }: { days: number[] }) {
         <div className="flex items-center gap-1.5 t-small text-faint">
           <span>less</span>
           {[0, 1, 2, 4, 6].map((n) => (
-            <span key={n} className={`h-[11px] w-[11px] rounded-[2px] ${cellClass(n)}`} />
+            <span key={n} className={`h-[12px] w-[12px] border border-line-soft ${cellClass(n)}`} />
           ))}
           <span>more</span>
         </div>

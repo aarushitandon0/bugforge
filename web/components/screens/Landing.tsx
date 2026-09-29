@@ -6,10 +6,9 @@ import { ApiError, getRepos, startForge, type Forgeable } from "@/lib/api";
 import { HEADLINE, VETTED_REPOS } from "@/lib/forge-data";
 import { normalizeRepoUrl, parseRepoInput, repoDisplay } from "@/lib/format";
 import { rulesFor } from "@/lib/lang";
-import { Cursor } from "../Cursor";
 import { ForgeStream, type LocalLine } from "../ForgeStream";
+import { Mascot } from "../Mascot";
 import { buttonClass } from "../ui/Button";
-import { StatLine } from "../ui/StatLine";
 
 /*
  * Repos worth showing that no image exists for yet. They used to render at
@@ -138,13 +137,32 @@ export function Landing() {
      * edge and the stats line at the foot of the left column resolve to the
      * same baseline instead of ending 80px apart.
      */
-    <div className="grid grid-cols-1 gap-8 pt-10 pb-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-12 lg:pt-12">
+    <div className="grid grid-cols-1 gap-8 pt-10 pb-6 lg:grid-cols-2 lg:gap-16 lg:pt-14">
       <section className="flex min-w-0 flex-col">
-        <h1 className="t-display max-w-[18ch] text-text">
-          Every repo is a debugging gym.
-          <Cursor className="ml-3" />
+        {/* The rotated chip stack the reference sits above every headline. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="chip animate-pop" style={{ "--chip-rot": "-2deg" } as React.CSSProperties}>
+            <span aria-hidden>◆</span> real open-source repos
+          </span>
+          <span
+            className="chip animate-pop"
+            style={{ "--chip-rot": "1.5deg", animationDelay: "90ms" } as React.CSSProperties}
+          >
+            <span aria-hidden>▲</span> graded by the suite
+          </span>
+        </div>
+
+        {/*
+         * No max-width and no cursor. The cursor is sized in `em`, so at the
+         * display step it rendered as a ~100x55px black slab beside "gym."
+         * rather than as a caret; the wordmark in the header still carries one
+         * at a size where it reads as what it is.
+         */}
+        <h1 className="t-display mt-6 text-text">
+          Every repo is a <span className="text-coral">debugging</span>{" "}
+          <span className="marker">gym.</span>
         </h1>
-        <p className="t-body mt-5 max-w-[58ch] text-muted">
+        <p className="prose mt-7 max-w-[52ch] text-muted">
           Paste any public repo with a test suite. BugForge breaks it the way it would break in production, hands you
           the stack trace, and checks your fix. Nothing here was written by hand.
         </p>
@@ -156,7 +174,7 @@ export function Landing() {
          * rather than a product.
          */}
         <form
-          className="mt-6 flex flex-col rounded border border-line transition-colors duration-[120ms] focus-within:border-line-strong sm:h-13 sm:flex-row"
+          className="mt-7 flex flex-col border-[3px] border-line bg-surface-2 shadow-brut transition-shadow duration-[120ms] focus-within:shadow-brut-lg sm:h-14 sm:flex-row"
           onSubmit={(e) => {
             e.preventDefault();
             forge(input);
@@ -180,10 +198,12 @@ export function Landing() {
           <button
             type="submit"
             disabled={starting}
+            /* Inside the shared box the button must not carry its own shadow
+               or its own outer border -- it is a segment of one control. */
             className={buttonClass(
               "primary",
               "lg",
-              "shrink-0 rounded-none border-t border-line disabled:cursor-wait sm:h-auto sm:self-stretch sm:border-t-0 sm:border-l",
+              "shrink-0 !border-0 !border-t-[3px] !shadow-none !transform-none disabled:cursor-wait sm:h-auto sm:self-stretch sm:!border-t-0 sm:!border-l-[3px]",
             )}
           >
             {starting ? "forging…" : "forge bugs"}
@@ -221,31 +241,72 @@ export function Landing() {
           ))}
         </div>
 
-        <ol className="mt-10 space-y-3 border-t border-line pt-10">
+        {/*
+         * The three stages as printed cards with stroked numerals, which is
+         * the reference's "how a drill works" row. Each one animates in behind
+         * the last so the sequence reads as a sequence.
+         */}
+        <ol className="mt-12 grid gap-4 border-t-[3px] border-line pt-10 sm:grid-cols-3">
           {STEPS.map(([name, what], i) => (
-            <li key={name} className="t-small flex gap-3">
-              <span className="w-[2ch] shrink-0 tabular-nums text-faint">{String(i + 1).padStart(2, "0")}</span>
-              <span className="w-[9ch] shrink-0 text-text">{name}</span>
-              {/* fixed column, so the three descriptions wrap the same way at
-                  every width instead of each finding its own break */}
-              <span className="min-w-0 max-w-[52ch] text-muted">{what}</span>
+            <li
+              key={name}
+              className="brut brut-press animate-rise p-4"
+              style={{ animationDelay: `${i * 90}ms` }}
+            >
+              <span className="num-outline block">{String(i + 1).padStart(2, "0")}</span>
+              <h3 className="t-label mt-3 text-text">{name}</h3>
+              <p className="t-small mt-2 text-muted">{what}</p>
             </li>
           ))}
         </ol>
 
-        {/* the proof that there is a filter, and not just a model making bugs up */}
-        <StatLine
-          className="mt-auto pt-10"
-          stats={[
-            { value: HEADLINE.candidates, label: "candidates" },
-            { value: HEADLINE.covered, label: "on covered lines" },
-            { value: HEADLINE.admitted, label: "bugs" },
-            { value: HEADLINE.gaps, label: "test gaps", tone: "text-gap" },
-          ]}
-        />
+        {/*
+         * The proof that there is a filter, and not a model making bugs up.
+         * Four flat colour blocks butted edge to edge under one printed
+         * shadow, as the reference does with its 2 / 7 / 8 row.
+         */}
+        <div className="mt-auto pt-10">
+          <dl className="flex flex-wrap border-[3px] border-line shadow-brut">
+            {[
+              { value: HEADLINE.candidates, label: "candidates", fill: "bg-surface-2 text-text" },
+              { value: HEADLINE.covered, label: "on covered lines", fill: "bg-accent text-accent-fg" },
+              { value: HEADLINE.admitted, label: "bugs", fill: "bg-green text-[#1a1423]" },
+              { value: HEADLINE.gaps, label: "test gaps", fill: "bg-coral text-[#1a1423]" },
+            ].map((stat, i) => (
+              <div
+                key={stat.label}
+                className={`min-w-0 flex-1 px-3 py-3 ${stat.fill} ${i > 0 ? "border-l-[3px] border-line" : ""}`}
+              >
+                <dd className="font-display text-[26px] leading-none font-black tabular-nums">{stat.value}</dd>
+                <dt className="t-label mt-1.5 break-words">{stat.label}</dt>
+              </div>
+            ))}
+          </dl>
+        </div>
       </section>
 
-      <section aria-label="generation stream" className="min-h-[420px] min-w-0 lg:min-h-[560px]">
+      <section aria-label="generation stream" className="relative min-h-[420px] min-w-0 lg:min-h-[560px]">
+        {/*
+         * The mascot straddles the terminal's BOTTOM-left corner, where the
+         * stream has run out of rows and the panel is empty. It previously sat
+         * on the top-left, directly over the repo name and the run id -- the
+         * two bits of the header worth reading.
+         *
+         * Hidden below lg: at phone width it would cover the first stream rows,
+         * and the stream is the thing worth seeing.
+         */}
+        {/*
+         * Bottom-right, sized to the gap the legend leaves.
+         *
+         * Every other edge of the terminal is spoken for: the header carries
+         * the repo and the run id, the body is where rows stream in, and the
+         * footer legend runs from the left padding. What is left is the strip
+         * to the right of that legend, about 130px at the narrowest width this
+         * renders at, so the mascot is drawn to fit inside it rather than
+         * floating over live output. It only appears from lg up, where that
+         * strip exists at all.
+         */}
+        <Mascot className="pointer-events-none absolute right-3 -bottom-6 z-10 hidden w-[118px] animate-rise lg:block" />
         <ForgeStream executionId={executionId} repoLabel={repoLabel} localLines={lines} legend />
       </section>
     </div>

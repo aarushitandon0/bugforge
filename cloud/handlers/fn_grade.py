@@ -63,7 +63,12 @@ def _apply_patch(tree: Path, patch_text: str) -> None:
     normalized = patch_text.replace("\r\n", "\n")
     if not normalized.endswith("\n"):
         normalized += "\n"
-    patch_file.write_text(normalized, encoding="utf-8")
+    # newline="\n" or the normalization above is undone on the way out: the
+    # default translates every \n back to os.linesep, which on Windows means
+    # the patch reaches git as CRLF while the extracted tree is LF, and every
+    # submission -- including the correct one -- fails as patch_did_not_apply.
+    # A no-op on Linux, where this runs deployed.
+    patch_file.write_text(normalized, encoding="utf-8", newline="\n")
 
     errors = []
     for strip in ("-p1", "-p0"):

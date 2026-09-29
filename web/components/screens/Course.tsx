@@ -19,7 +19,7 @@ type Sort = "difficulty" | "scope";
 /* Two selects with the same box. Not a Button: they are not actions, and
    giving them the secondary treatment made them read as things to press. */
 const CONTROL =
-  "h-8 rounded border border-line bg-surface-1 px-2 t-small text-text transition-colors duration-[120ms] hover:bg-surface-2";
+  "h-8 rounded border-2 border-line bg-surface-1 px-2 t-small text-text transition-colors duration-[120ms] hover:bg-surface-2";
 
 export function Course() {
   const repo = useSearchParams().get("name") ?? "";

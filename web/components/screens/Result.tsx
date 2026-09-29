@@ -152,7 +152,7 @@ export function Result() {
           {OPERATOR[data.operator] ? ` (${OPERATOR[data.operator]})` : ""}. Nothing else in the repo was touched.
         </p>
 
-        <div className="mt-8 overflow-x-auto border border-line bg-surface-2">
+        <div className="mt-8 overflow-x-auto border-[3px] border-line bg-surface-2 shadow-brut">
           <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-2 text-[11px] text-muted">
             <span className="truncate">
               {data.file_path}:{data.lineno}
@@ -173,7 +173,7 @@ export function Result() {
           </div>
         </div>
 
-        <details className="group mt-3 border border-line">
+        <details className="group mt-3 border-2 border-line">
           <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-[12px] text-muted hover:text-text">
             <span>the full diff, as applied</span>
             <span aria-hidden className="group-open:hidden">▸</span>
@@ -216,7 +216,7 @@ export function Result() {
         </details>
 
         {record?.patch && (
-          <details className="group mt-3 border border-line">
+          <details className="group mt-3 border-2 border-line">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-[12px] text-muted hover:text-text">
               <span>your fix</span>
               <span aria-hidden className="group-open:hidden">▸</span>

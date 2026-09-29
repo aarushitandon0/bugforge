@@ -17,18 +17,21 @@ import type { ReactNode } from "react";
 export type DifficultyBand = "easy" | "medium" | "hard";
 export type StatusKind = "keep" | "drop" | "gap";
 
-const BASE = "inline-flex items-center gap-1 rounded border px-2 t-label";
+/* Flat saturated fill, ink letterform, 2px ink border, printed shadow. The
+   band is legible from the colour alone at a glance, which is the whole point
+   of a badge in a grid of fifty-six. */
+const BASE = "inline-flex items-center gap-1 border-2 border-line px-2 py-px shadow-brut-sm t-label";
 
 const DIFFICULTY: Record<DifficultyBand, string> = {
-  easy: "border-keep/40 bg-keep/10 text-keep",
-  medium: "border-count/40 bg-count/10 text-count",
-  hard: "border-gap/40 bg-gap/10 text-gap",
+  easy: "bg-green text-[#1a1423]",
+  medium: "bg-accent text-accent-fg",
+  hard: "bg-coral text-[#1a1423]",
 };
 
 const STATUS: Record<StatusKind, string> = {
-  keep: "border-keep/40 bg-keep/10 text-keep",
-  drop: "border-line bg-transparent text-drop",
-  gap: "border-gap/40 bg-gap/10 text-gap",
+  keep: "bg-green text-[#1a1423]",
+  drop: "bg-surface-3 text-muted",
+  gap: "bg-coral text-[#1a1423]",
 };
 
 export function DifficultyBadge({ band, title }: { band: DifficultyBand; title?: string }) {
@@ -40,7 +43,7 @@ export function DifficultyBadge({ band, title }: { band: DifficultyBand; title?:
 }
 
 export function LanguageBadge({ language }: { language: string }) {
-  return <span className={`${BASE} border-line text-muted`}>{language.toLowerCase()}</span>;
+  return <span className={`${BASE} bg-surface-2 text-text`}>{language.toLowerCase()}</span>;
 }
 
 export function StatusBadge({ kind, children }: { kind: StatusKind; children?: ReactNode }) {

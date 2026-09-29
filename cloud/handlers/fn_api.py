@@ -89,31 +89,49 @@ def _response(status: int, payload) -> dict:
     }
 
 
-def _on_localstack() -> bool:
-    """True only when an endpoint override is set, i.e. never on real AWS.
+def _off_aws() -> bool:
+    """True only when this is not running against real AWS.
 
-    The two local-dev switches below are gated on this as well as on their own
-    flag, so a flag copied into a real deployment by mistake does nothing.
+    Two ways to not be on AWS: an endpoint override pointing at LocalStack, or
+    the filesystem/SQLite store standing in for S3 and DynamoDB entirely (see
+    cloud/local_store.py). A real deployment sets neither.
+
+    The two switches below are gated on this as well as on their own flag, so
+    a flag copied into a real deployment by mistake does nothing.
     """
-    return bool(os.environ.get("AWS_ENDPOINT_URL"))
+    return bool(os.environ.get("AWS_ENDPOINT_URL") or os.environ.get("BUGFORGE_LOCAL_STORE"))
 
 
 def _local_user() -> dict | None:
-    """A fixed dev identity, so the site is usable without a GitHub OAuth app."""
+    """A fixed dev identity, so the site is usable without a GitHub OAuth app.
+
+    Three conditions, not one. `_off_aws()` alone is no longer enough: the
+    no-AWS deployment runs on the filesystem store, so it is "off AWS" too,
+    and there the stand-in would sign every visitor in as the same person --
+    one shared solved history, one leaderboard row for everybody.
+    `auth.local_user_allowed()` is what distinguishes plain-http localhost
+    from a public HTTPS origin; it says why. The server refuses to start if
+    the variable is set where it is not allowed, so reaching this line with a
+    login and no permission means something is misconfigured, and the safe
+    reading of that is signed out.
+    """
     login = os.environ.get("BUGFORGE_LOCAL_USER")
-    if login and _on_localstack():
-        return {"sub": "local-dev", "login": login, "avatar": ""}
-    return None
+    if not login or not _off_aws():
+        return None
+    if not auth.local_user_allowed():
+        return None
+    return {"sub": "local-dev", "login": login, "avatar": ""}
 
 
 def _local_grading() -> bool:
     """Grade in this process instead of invoking fn_grade / fn_reveal.
 
-    LocalStack community cannot start container-image Lambdas, and this
-    function already runs in the same image (repo and test suite included) under
-    `sam local start-api`, so it can run the grader itself.
+    LocalStack community cannot start container-image Lambdas, and on the
+    no-AWS deploy there is no Lambda to invoke at all. In both cases this
+    function already runs in the same image (repo and test suite included), so
+    it can run the grader itself.
     """
-    return os.environ.get("BUGFORGE_LOCAL_GRADING") == "1" and _on_localstack()
+    return os.environ.get("BUGFORGE_LOCAL_GRADING") == "1" and _off_aws()
 
 
 def _session(event: dict) -> dict | None:

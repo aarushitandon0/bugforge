@@ -57,15 +57,15 @@ export function ChallengeCard({
      * overlay has nothing to sit above.
      */
     <article
-      className={`group relative flex h-full flex-col gap-2 rounded border p-4 transition-colors duration-[120ms] ${
+      className={`group brut brut-press relative flex h-full flex-col gap-2 p-4 ${
         next
-          ? "border-accent pl-5 before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-l before:bg-accent before:content-['']"
-          : "border-line hover:border-line-strong focus-within:border-line-strong"
+          ? "pl-6 before:absolute before:inset-y-0 before:left-0 before:w-3 before:border-r-[3px] before:border-line before:bg-accent before:content-['']"
+          : ""
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">
         {index !== undefined && (
-          <span className="t-label tabular-nums text-faint">{String(index).padStart(2, "0")}</span>
+          <span className="t-label tabular-nums text-text opacity-45">{String(index).padStart(2, "0")}</span>
         )}
         <DifficultyBadge band={card.difficulty_label} title={breakdownTitle(card)} />
         <LanguageBadge language={card.language} />
@@ -80,9 +80,11 @@ export function ChallengeCard({
       <p className="t-small min-w-0 flex-1 break-words text-muted">{card.description}</p>
 
       {marker === "solved" ? (
-        <span className="t-small text-keep">&#10003; solved</span>
+        <span className="t-label inline-flex w-fit items-center gap-1 border-2 border-line bg-green px-2 py-px text-[#1a1423] shadow-brut-sm">
+          &#10003; solved
+        </span>
       ) : (
-        <ArrowText tone={next ? "text-accent" : "text-muted group-hover:text-text"}>
+        <ArrowText tone={next ? "font-bold text-text" : "text-muted group-hover:text-text"}>
           {next ? "next up" : "solve"}
         </ArrowText>
       )}

@@ -44,7 +44,7 @@ const TABLE_AT = 4;
 
 function RepoCard({ repo, edges }: { repo: RepoSummary; edges: number[] }) {
   return (
-    <Panel className="group relative transition-colors duration-[120ms] hover:border-line-strong focus-within:border-line-strong">
+    <Panel className="group brut-press relative">
       <div className="flex flex-wrap items-center gap-2">
         <LanguageBadge language={repo.language} />
         {repo.license && <span className="t-small text-faint">{repo.license}</span>}
@@ -75,7 +75,7 @@ function RepoTable({ data }: { data: ReposResponse }) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] border-collapse text-left tabular-nums">
         <thead>
-          <tr className="border-y border-line">
+          <tr className="border-y-[3px] border-line bg-surface-3">
             {[
               ["repo", ""],
               ["lang", ""],
@@ -176,7 +176,7 @@ function GapSummary() {
                 a fixed column, so the eye reads one ragged edge and not two. */}
             <span className="flex h-[10px] min-w-0 flex-1 items-center pr-3">
               <span
-                className="block h-[10px] rounded bg-accent"
+                className="block h-[12px] border-2 border-line bg-accent"
                 style={{ width: `${(file.count / max) * 100}%` }}
                 aria-hidden
               />

@@ -164,6 +164,93 @@ def test_the_switch_is_off_unless_it_is_exactly_true(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# cookie modes
+# ---------------------------------------------------------------------------
+# Every one of these fails silently in a browser when it is wrong: the cookie
+# is simply not stored, and the only symptom is that signing in does nothing.
+
+def test_the_default_mode_is_the_aws_cross_site_pair():
+    assert auth.cookie_mode() == "cross_site"
+    assert auth.cookie_flags() == "HttpOnly; Secure; SameSite=None"
+
+
+def test_same_origin_keeps_secure_and_tightens_samesite(monkeypatch):
+    # One HTTPS origin serves app and API, so Lax is both enough and stricter
+    # than None -- the cookie stops riding on cross-site requests entirely.
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "same_origin")
+    header = auth.set_cookie(auth.COOKIE_NAME, "v", 60)
+    assert "HttpOnly" in header
+    assert "Secure" in header
+    assert "SameSite=Lax" in header
+    assert "SameSite=None" not in header
+
+
+def test_insecure_mode_drops_secure(monkeypatch):
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "insecure")
+    assert "Secure" not in auth.set_cookie(auth.COOKIE_NAME, "v", 60)
+
+
+def test_the_mode_is_case_and_whitespace_tolerant(monkeypatch):
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "  Same_Origin ")
+    assert auth.cookie_mode() == "same_origin"
+
+
+def test_an_unrecognised_mode_raises_rather_than_falling_back(monkeypatch):
+    # A fallback here would hand back attributes the browser discards and give
+    # no hint why, which is exactly the failure the named mode exists to stop.
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "samesite-lax")
+    with pytest.raises(auth.AuthError):
+        auth.cookie_flags()
+
+
+def test_the_explicit_mode_wins_over_the_legacy_switch(monkeypatch):
+    monkeypatch.setenv("BUGFORGE_INSECURE_COOKIES", "true")
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "same_origin")
+    assert "Secure" in auth.set_cookie(auth.COOKIE_NAME, "v", 60)
+
+
+# ---------------------------------------------------------------------------
+# the fixed dev identity
+# ---------------------------------------------------------------------------
+
+def test_the_dev_identity_is_allowed_only_on_plain_http_local(monkeypatch):
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "insecure")
+    monkeypatch.delenv("SPACE_ID", raising=False)
+    assert auth.local_user_allowed()
+
+
+@pytest.mark.parametrize("mode", ["cross_site", "same_origin"])
+def test_the_dev_identity_is_refused_on_any_https_deployment(monkeypatch, mode):
+    # It would sign every visitor in as one account: one shared solved
+    # history, one leaderboard row for everybody.
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", mode)
+    monkeypatch.delenv("SPACE_ID", raising=False)
+    assert not auth.local_user_allowed()
+
+
+def test_the_dev_identity_is_refused_in_a_space_even_on_insecure_cookies(monkeypatch):
+    # Setting both switches on the deployment still must not open it.
+    monkeypatch.setenv("BUGFORGE_COOKIE_MODE", "insecure")
+    monkeypatch.setenv("SPACE_ID", "someone/bugforge")
+    assert not auth.local_user_allowed()
+
+
+# ---------------------------------------------------------------------------
+# secrets supplied inline
+# ---------------------------------------------------------------------------
+
+def test_a_secret_can_be_supplied_under_its_plain_name(monkeypatch):
+    # There is no Secrets Manager on the no-AWS deployment, so the value is
+    # the variable. boto3 must never be reached for it.
+    monkeypatch.setenv("GITHUB_CLIENT_ID", "Ov23liSPACE")
+    monkeypatch.setenv("GITHUB_CLIENT_SECRET", "shh")
+    monkeypatch.setenv("SESSION_SECRET", "signing")
+    assert auth.client_id() == "Ov23liSPACE"
+    assert auth.client_secret() == "shh"
+    assert auth.signing_key() == b"signing"
+
+
+# ---------------------------------------------------------------------------
 # OAuth state
 # ---------------------------------------------------------------------------
 

@@ -25,7 +25,7 @@ function applyTheme(theme: Theme): void {
   // the browser chrome (address bar, form controls) follows too
   document.querySelector('meta[name="theme-color"]')?.setAttribute(
     "content",
-    theme === "light" ? "#FAFAF8" : "#0A0B0D",
+    theme === "light" ? "#f7f1e7" : "#14101b",
   );
 }
 

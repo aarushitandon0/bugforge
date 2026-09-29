@@ -1,108 +1,84 @@
 @import "tailwindcss";
 
 /*
- * The design system, enforced at the token level: the default colour, font,
- * radius and shadow scales are removed outright, so a rounded corner, a
- * shadow, a sans-serif face or an off-palette colour cannot be written with a
- * utility class at all.
+ * The design system: neo-brutalist, built on four rules.
  *
- * Everything below is declared once here and aliased into Tailwind in @theme.
- * A component never writes a hex, a px radius, or a font size that is not one
- * of the six steps in the type scale.
+ *   1. Elevation is a HARD OFFSET SHADOW, never a blur. A card sits on the
+ *      page because a solid slab of ink is printed behind it.
+ *   2. Every surface is enclosed by a THICK INK BORDER, 2px or 3px.
+ *   3. Corners are SQUARE. The radius scale is wiped so there is no
+ *      `rounded-lg` to reach for.
+ *   4. Colour is FLAT and SATURATED. Amber, coral, green and violet are
+ *      fills, and ink is what sits on top of them.
+ *
+ * The token names are unchanged from the previous system on purpose: every
+ * component keeps working against `bg-surface-2`, `text-muted`, `border-line`
+ * and the verdict colours, so a re-skin costs no component edits.
  */
 
 /* ---------------------------------------------------------------------------
- * dark
+ * light -- the primary theme. Cream paper under a printers' grid.
  * ------------------------------------------------------------------------ */
 :root,
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  /* Three surface steps, so elevation is a surface change and never a shadow.
-     1 is the page, 2 is a panel sitting on it, 3 is a row lifting under the
-     pointer. */
-  --surface-1: #0d0d0f;
-  --surface-2: #151518;
-  --surface-3: #1c1c20;
-  --border: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.18);
-
-  --text: #edebe4;
-  --text-muted: #a29d91; /* 7.18:1 on --surface-1, 6.74:1 on --surface-2 */
-  --text-faint: #6e6a60;
-
-  /* One hue family across both themes. Dark runs lighter and warmer so it
-     holds the same weight against a near-black page that the light value
-     holds against paper. */
-  --accent: #e2701c;
-  --accent-hover: #f08432;
-  --accent-fg: #11100c;
-
-  /* Terminal verdicts. Deliberately not the brand accent: the stream is a
-     separate system that reports on a run, and colouring it with the CTA
-     colour would make a dropped mutation look like a call to action. */
-  --term-keep: #4fb06a;
-  --term-drop: #8a8578;
-  --term-gap: #d4574e;
-  --term-count: #c9a227;
-
-  /* Stack-trace semantics, a third system again: these belong to the editor
-     gutter and exist nowhere else. */
-  --trace-frame: #8b5cf6;
-  --trace-raise: #d99a2b;
-
-  /* Editor syntax. Real hues -- code without colour reads as unfinished.
-     The trace colours stay out of the text and carry meaning through the row
-     tint and the gutter instead, so they still stand out against this. */
-  --syn-keyword: #c678dd;
-  --syn-string: #98c379;
-  --syn-number: #d19a66;
-  --syn-comment: #5c6370;
-  --syn-function: #61afef;
-  --syn-class: #e5c07b;
-  --syn-decorator: #56b6c2;
-  --syn-operator: #56b6c2;
-  --syn-variable: #edebe4;
-  --syn-invalid: #e06c75;
-}
-
-/* ---------------------------------------------------------------------------
- * light
- *
- * Not an inversion: it aims at a well-lit terminal on paper. Same restraint --
- * square corners, hairline borders, no shadows -- new values.
- * ------------------------------------------------------------------------ */
 [data-theme="light"] {
   color-scheme: light;
 
-  --surface-1: #faf9f6;
-  --surface-2: #f2f0ea;
-  --surface-3: #e8e5dd;
-  --border: rgba(0, 0, 0, 0.12);
-  --border-strong: rgba(0, 0, 0, 0.22);
+  /* 1 is the page, 2 is a card printed on it, 3 is a row lifting under the
+     pointer. Cream rather than white: the reference is paper, not screen. */
+  --surface-1: #f7f1e7;
+  --surface-2: #fdfaf4;
+  --surface-3: #ece4d6;
 
-  --text: #16150f;
-  --text-muted: #56534a; /* 7.30:1 on --surface-1, 6.75:1 on --surface-2 */
-  --text-faint: #8a8578;
+  /* The slab: a near-black block used for full-bleed feature sections. It is
+     the same value in both themes, because it is ink, not a surface step. */
+  --slab: #1a1423;
+  --slab-text: #f7f1e7;
 
-  /* #BF5410 measures 4.44:1 on --surface-1, just under the 4.5 floor for the
-     places the accent is text rather than a fill. Darkened one step to 4.91:1
-     without leaving the hue. */
-  --accent: #b54e0e;
-  --accent-hover: #a4470d;
-  --accent-fg: #ffffff;
+  /* Borders are ink at full strength, not a translucent hairline. This is the
+     single biggest visual difference from the old system. */
+  --border: #1a1423;
+  --border-strong: #1a1423;
+  --border-soft: rgba(26, 20, 35, 0.16);
 
-  /* Same four hues, darkened until each clears 4.5:1 on --surface-2. The
-     stream itself never uses these -- it pins data-theme="dark" -- but the
-     status badges that share the vocabulary do, on a light page. */
-  --term-keep: #2f7d46;
-  --term-drop: #6b675c;
-  --term-gap: #b23a32;
-  --term-count: #8a6f12;
+  --text: #1a1423;
+  --text-muted: #4f4857; /* 8.1:1 on --surface-1 */
+  --text-faint: #837b8f; /* decorative only -- never load-bearing text */
 
-  --trace-frame: #6d28d9;
+  /* Amber is a FILL, never text on cream: #f9b233 measures 1.8:1 there. Ink
+     sits on top of it instead, which is what every button in the reference
+     does. --accent-text is the darkened value for the rare amber-as-text. */
+  --accent: #f9b233;
+  --accent-hover: #ffc457;
+  --accent-fg: #1a1423;
+
+  /* Coral carries the display type. At 44px/700 the 3:1 large-text floor
+     applies and #ff6b4a clears it; --coral-text is for anything smaller. */
+  --coral: #ff6b4a;
+  --coral-text: #cf3f16; /* 5.1:1 on --surface-1 */
+
+  --violet: #7c5cff;
+  --violet-text: #5b34e0;
+
+  --green: #2ecc71;
+  --green-text: #157f45;
+
+  --red: #e5484d;
+  --red-text: #c22026;
+
+  /* Terminal verdicts, mapped onto the brutalist palette. Deliberately not
+     the amber CTA: a dropped mutation must not read as a call to action. */
+  --term-keep: #157f45;
+  --term-drop: #6b6477;
+  --term-gap: #c22026;
+  --term-count: #8a6410;
+
+  /* Stack-trace semantics. These belong to the editor gutter and nowhere
+     else, so they keep their own two hues. */
+  --trace-frame: #5b34e0;
   --trace-raise: #b45309;
 
+  /* Editor syntax. The solve screen stays a real IDE -- this is the one place
+     the brutalist palette steps back and legibility of code wins. */
   --syn-keyword: #a626a4;
   --syn-string: #45803f;
   --syn-number: #b76b01;
@@ -111,17 +87,92 @@
   --syn-class: #9a6700;
   --syn-decorator: #0184bc;
   --syn-operator: #0184bc;
-  --syn-variable: #16150f;
+  --syn-variable: #1a1423;
   --syn-invalid: #ca1243;
+
+  /* The offset shadow's colour. Ink on paper. */
+  --shadow-ink: #1a1423;
+  --grid-line: rgba(26, 20, 35, 0.055);
 }
 
-/* Theme-independent. 15% of the accent, for bar fills and subtle backgrounds:
-   declared once, after both themes, because it resolves against whichever
-   --accent is in scope. */
+/* ---------------------------------------------------------------------------
+ * dark
+ *
+ * Not an inversion. The brutalist grammar survives -- square, thick-bordered,
+ * offset-shadowed -- but the shadow becomes true black against a violet-black
+ * page, and borders become light so the slab edge still reads.
+ * ------------------------------------------------------------------------ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-1: #14101b;
+  --surface-2: #1e1828;
+  --surface-3: #2a2235;
+
+  --slab: #0c0912;
+  --slab-text: #f7f1e7;
+
+  --border: #f7f1e7;
+  --border-strong: #ffffff;
+  --border-soft: rgba(247, 241, 231, 0.22);
+
+  --text: #f7f1e7;
+  --text-muted: #a99fb5; /* 7.4:1 on --surface-1 */
+  --text-faint: #6f6779;
+
+  --accent: #f9b233;
+  --accent-hover: #ffc457;
+  --accent-fg: #14101b;
+
+  /* Lifted and warmed so each holds the same weight against a near-black page
+     that the light value holds against paper. On dark, these clear 4.5:1 as
+     text outright, so the -text variants collapse onto the base value. */
+  --coral: #ff8563;
+  --coral-text: #ff8563;
+
+  --violet: #9b81ff;
+  --violet-text: #9b81ff;
+
+  --green: #4fd98b;
+  --green-text: #4fd98b;
+
+  --red: #ff6b70;
+  --red-text: #ff6b70;
+
+  --term-keep: #4fd98b;
+  --term-drop: #8a8299;
+  --term-gap: #ff6b70;
+  --term-count: #f9b233;
+
+  --trace-frame: #9b81ff;
+  --trace-raise: #f0a93b;
+
+  --syn-keyword: #c678dd;
+  --syn-string: #98c379;
+  --syn-number: #d19a66;
+  --syn-comment: #5c6370;
+  --syn-function: #61afef;
+  --syn-class: #e5c07b;
+  --syn-decorator: #56b6c2;
+  --syn-operator: #56b6c2;
+  --syn-variable: #f7f1e7;
+  --syn-invalid: #e06c75;
+
+  /* True black reads as a hole against #14101b, and the light border keeps
+     the card's own edge crisp in front of it. */
+  --shadow-ink: #000000;
+  --grid-line: rgba(247, 241, 231, 0.045);
+}
+
+/* Theme-independent, declared after both themes so they resolve against
+   whichever --accent is in scope. */
 :root,
 [data-theme="dark"],
 [data-theme="light"] {
-  --accent-muted: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-muted: color-mix(in srgb, var(--accent) 18%, transparent);
+  --coral-muted: color-mix(in srgb, var(--coral) 16%, transparent);
+  --violet-muted: color-mix(in srgb, var(--violet) 16%, transparent);
+  --green-muted: color-mix(in srgb, var(--green) 16%, transparent);
 }
 
 @theme {
@@ -130,8 +181,11 @@
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
+  --color-slab: var(--slab);
+  --color-slab-text: var(--slab-text);
   --color-line: var(--border);
   --color-line-strong: var(--border-strong);
+  --color-line-soft: var(--border-soft);
 
   --color-text: var(--text);
   --color-muted: var(--text-muted);
@@ -142,6 +196,15 @@
   --color-accent-fg: var(--accent-fg);
   --color-accent-muted: var(--accent-muted);
 
+  --color-coral: var(--coral);
+  --color-coral-text: var(--coral-text);
+  --color-violet: var(--violet);
+  --color-violet-text: var(--violet-text);
+  --color-green: var(--green);
+  --color-green-text: var(--green-text);
+  --color-red: var(--red);
+  --color-red-text: var(--red-text);
+
   --color-keep: var(--term-keep);
   --color-drop: var(--term-drop);
   --color-gap: var(--term-gap);
@@ -150,21 +213,31 @@
   --color-frame: var(--trace-frame);
   --color-raise: var(--trace-raise);
 
+  /* Three faces. Display is a heavy grotesque drawn from the system stack --
+     Arial Black and Impact ship on Windows and macOS -- so the look needs no
+     webfont download. Swapping in Archivo Black later is a one-line change
+     to this token and nothing else. */
   --font-*: initial;
+  --font-display: "Archivo Black", "Arial Black", "Helvetica Neue", Impact, system-ui, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Tailwind's default spacing ramp is already 4px-based, so p-1 p-2 p-3 p-4
-     p-5 p-6 p-8 p-10 p-12 p-16 p-20 spell out exactly the permitted scale
-     (4 8 12 16 20 24 32 40 48 64 80). Anything off it has to be written as an
-     arbitrary value, which makes it reviewable. */
-  --spacing-page: 112px;
+  /* Tailwind's 4px spacing ramp already spells out the permitted scale, so
+     anything off it has to be an arbitrary value, which makes it reviewable. */
+  /* 112px of gutter on top of a 1400px cap left the content squeezed into a
+     narrow band down the middle of a wide screen. The page is meant to fill
+     the display, so the gutter is now a third of what it was. */
+  --spacing-page: 40px;
   --spacing-card: 24px;
 
-  /* One radius. The scale is wiped first so there is no `rounded-lg` to reach
-     for; `rounded` is the only one, and it is 4px. */
+  /* Square, everywhere. The scale is wiped so `rounded-lg` does not exist;
+     `rounded` survives at 0 so existing markup keeps compiling. */
   --radius-*: initial;
-  --radius: 4px;
+  --radius: 0px;
 
+  /* The offset-shadow scale: three steps, no blur, no spread. This replaces
+     the old system's blanket ban on shadows -- here the shadow IS the
+     elevation model, and a blurred one still cannot be written. */
   --shadow-*: initial;
   --inset-shadow-*: initial;
   --drop-shadow-*: initial;
@@ -172,8 +245,16 @@
   --blur-*: initial;
   --backdrop-blur-*: initial;
 
+  --shadow-brut-sm: 3px 3px 0 0 var(--shadow-ink);
+  --shadow-brut: 5px 5px 0 0 var(--shadow-ink);
+  --shadow-brut-lg: 8px 8px 0 0 var(--shadow-ink);
+
   --animate-fade: fade 120ms linear both;
   --animate-blink: blink 1.06s steps(1, end) infinite;
+  --animate-rise: rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-pop: pop 260ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  --animate-ticker: ticker 24s linear infinite;
+  --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
 
   @keyframes fade {
     from {
@@ -194,16 +275,58 @@
       opacity: 0;
     }
   }
+
+  /* The entrance the reference uses everywhere: a card drops onto the page
+     and its printed shadow arrives with it. */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.92) rotate(var(--pop-rot, 0deg));
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) rotate(var(--pop-rot, 0deg));
+    }
+  }
+
+  @keyframes ticker {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
 }
 
 /*
- * The Tailwind colour scale, re-declared on every element that carries a theme.
+ * The colour aliases are re-declared on every element carrying a theme.
  *
  * A custom property is substituted where it is DECLARED, not where it is used:
- * with the aliases living only in @theme (i.e. on :root), the computed value
- * inherits down and a subtree that re-declares the tokens changes nothing. The
- * landing page's stream relies on exactly that -- it is a terminal, and stays
- * dark on a light page -- so the aliases are re-declared here.
+ * with the aliases living only in @theme (i.e. on :root), a subtree that
+ * re-declares the tokens would change nothing. The landing page's forge stream
+ * relies on exactly that -- it is a terminal, and stays dark on a light page.
  */
 :root,
 [data-theme="dark"],
@@ -211,8 +334,11 @@
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
+  --color-slab: var(--slab);
+  --color-slab-text: var(--slab-text);
   --color-line: var(--border);
   --color-line-strong: var(--border-strong);
+  --color-line-soft: var(--border-soft);
   --color-text: var(--text);
   --color-muted: var(--text-muted);
   --color-faint: var(--text-faint);
@@ -220,6 +346,14 @@
   --color-accent-hover: var(--accent-hover);
   --color-accent-fg: var(--accent-fg);
   --color-accent-muted: var(--accent-muted);
+  --color-coral: var(--coral);
+  --color-coral-text: var(--coral-text);
+  --color-violet: var(--violet);
+  --color-violet-text: var(--violet-text);
+  --color-green: var(--green);
+  --color-green-text: var(--green-text);
+  --color-red: var(--red);
+  --color-red-text: var(--red-text);
   --color-keep: var(--term-keep);
   --color-drop: var(--term-drop);
   --color-gap: var(--term-gap);
@@ -236,18 +370,29 @@
   body {
     background: var(--surface-1);
     color: var(--text);
+
+    /* Mono stays the default face. BugForge is a debugging tool: the tables,
+       stats, file paths and verdicts are all machine output, and prose opts
+       out to --font-sans via .prose rather than the other way round. */
     font-family: var(--font-mono);
     font-variant-ligatures: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 
-    /* body is the default step; anything else opts in to a named step */
     font-size: 15px;
     font-weight: 400;
     line-height: 1.65;
     letter-spacing: 0;
+
+    /* The printers' grid. Fixed so it does not scroll with content, and at
+       ~5% alpha so it never competes with the type. */
+    background-image:
+      repeating-linear-gradient(to right, var(--grid-line) 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(to bottom, var(--grid-line) 0 1px, transparent 1px 48px);
+    background-attachment: fixed;
   }
 
+  /* Borders default to ink, so `border` alone draws the brutalist edge. */
   *,
   ::before,
   ::after {
@@ -267,23 +412,20 @@
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--trace-frame) 40%, transparent);
-    color: var(--text);
+    background: var(--accent);
+    color: var(--accent-fg);
   }
 
-  /*
-   * Every interactive element gets this unless it opts out to draw its own,
-   * and the ring is the accent at 2px with 2px of offset so it reads on all
-   * three surfaces.
-   */
+  /* Every interactive element gets this unless it opts out. Ink rather than
+     accent, because the ring must read on top of an amber fill too. */
   :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 3px solid var(--border-strong);
     outline-offset: 2px;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--border-strong) transparent;
+    scrollbar-color: var(--border-soft) transparent;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -291,9 +433,12 @@
     ::before,
     ::after {
       animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
-    .animate-blink {
+    .animate-blink,
+    .animate-ticker,
+    .animate-pulse-dot {
       animation: none !important;
     }
   }
@@ -302,30 +447,41 @@
 /* ---------------------------------------------------------------------------
  * type scale
  *
- * Six steps, mono only. `display` is the landing H1 and nothing else.
- * The casing system rides along with the step: `label` is the only one that
- * uppercases, and it is reserved for eyebrows, table headers and status
- * badges. Nav, page titles and CTAs are lowercase; prose is sentence case.
+ * Six steps. The top two switch to the display face and uppercase; the rest
+ * stay mono. `label` is the only other step that uppercases, and it is
+ * reserved for eyebrows, table headers and status badges.
  * ------------------------------------------------------------------------ */
 @layer components {
+  /*
+   * The display step is sized against the COLUMN it sits in, not the viewport.
+   * At 7.5vw a nine-letter word set in Arial Black ran ~515px wide, which
+   * overflowed the hero's left column and printed across the terminal beside
+   * it. 4.4vw keeps the longest word inside the column at every width, and
+   * `overflow-wrap` is the backstop for a word longer than any of them.
+   */
   .t-display {
-    font-size: 44px;
-    font-weight: 700;
-    line-height: 1.08;
-    letter-spacing: -0.02em;
+    font-family: var(--font-display);
+    font-size: clamp(38px, 4.4vw, 68px);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+    overflow-wrap: break-word;
   }
 
   .t-h1 {
-    font-size: 32px;
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.015em;
+    font-family: var(--font-display);
+    font-size: clamp(30px, 4.2vw, 48px);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
   }
 
   .t-h2 {
     font-size: 20px;
-    font-weight: 600;
-    line-height: 1.3;
+    font-weight: 700;
+    line-height: 1.25;
     letter-spacing: -0.01em;
   }
 
@@ -346,9 +502,9 @@
   .t-label,
   .label {
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 700;
     line-height: 1.4;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
@@ -358,22 +514,136 @@
     color: var(--text-muted);
   }
 
-  .kbd {
-    display: inline-block;
-    padding: 0 4px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+  /* Prose opts out of mono. Used for the marketing paragraphs only -- never
+     for data, paths, or anything the pipeline produced. */
+  .prose {
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  /* -------------------------------------------------------------------------
+   * brutalist primitives
+   *
+   * These are the new vocabulary. Nothing in the app uses them yet; the
+   * screens adopt them one at a time in the phases after this one.
+   * ---------------------------------------------------------------------- */
+
+  /* A printed card: thick ink border, solid offset shadow, square corners. */
+  .brut {
+    border: 3px solid var(--border);
+    box-shadow: var(--shadow-brut);
+    background: var(--surface-2);
+  }
+
+  .brut-sm {
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow-brut-sm);
+    background: var(--surface-2);
+  }
+
+  .brut-lg {
+    border: 3px solid var(--border);
+    box-shadow: var(--shadow-brut-lg);
+    background: var(--surface-2);
+  }
+
+  /* The press: the card slides into its own shadow rather than scaling. */
+  .brut-press {
+    transition:
+      transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .brut-press:hover {
+    transform: translate3d(-2px, -2px, 0);
+    box-shadow: var(--shadow-brut-lg);
+  }
+  .brut-press:active {
+    transform: translate3d(3px, 3px, 0);
+    box-shadow: var(--shadow-brut-sm);
+  }
+
+  /* A chip: the small rotated uppercase badge the reference stacks above its
+     headlines. --chip-rot is set per instance so a row of them is not uniform. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow-brut-sm);
+    background: var(--surface-2);
     color: var(--text);
     font-size: 11px;
-    line-height: 16px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transform: rotate(var(--chip-rot, 0deg));
+  }
+
+  /* The full-bleed near-black feature section. Borders go light inside it
+     regardless of theme, because it is ink in both. */
+  .slab {
+    background: var(--slab);
+    color: var(--slab-text);
+    border: 3px solid var(--border);
+    box-shadow: var(--shadow-brut-lg);
+  }
+  .slab *,
+  .slab ::before,
+  .slab ::after {
+    border-color: rgba(247, 241, 231, 0.24);
+  }
+
+  /* Outlined numerals -- the 01 / 02 / 03 step markers. */
+  .num-outline {
+    font-family: var(--font-display);
+    font-size: 40px;
+    font-weight: 900;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 2px var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  /* A highlighter block behind a word, as on the reference's "EXIT." */
+  .marker {
+    display: inline-block;
+    padding: 0 10px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: 3px solid var(--border);
+    box-shadow: var(--shadow-brut);
+  }
+
+  .kbd {
+    display: inline-block;
+    padding: 0 5px;
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow-brut-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
   }
 
   .link {
     color: var(--text);
-    border-bottom: 1px solid var(--border-strong);
-    transition: border-color 120ms linear;
+    border-bottom: 2px solid var(--border);
+    font-weight: 700;
+    transition: background-color 120ms linear;
   }
   .link:hover {
-    border-color: var(--text);
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+
+  /* Opt a subtree out of the page grid -- the editor and the forge terminal
+     both need a flat background. */
+  .no-grid {
+    background-image: none;
   }
 }
